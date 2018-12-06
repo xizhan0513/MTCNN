@@ -1,0 +1,19 @@
+import sys
+import os
+
+def save_diff_file(img):
+    img_size = img.shape
+
+    f = open("diff.bin", 'wb+')
+
+    for i in range(0, img_size[0]):
+        for j in range(0, img_size[1]):
+            for k in range(0, img_size[2]):
+                if len(img_size) == 3:
+                    tmp = img[i][j][k]
+                    f.write(tmp)
+                if len(img_size) == 4:
+                    for v in range(0, img_size[3]):
+                        tmp = img[i][j][k][v]
+                        f.write(tmp)
+    f.close()
