@@ -48,7 +48,7 @@ def face_preprocess(img, landmark=None):
     return warped
 
 def main(args):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     # parameters
     minsize = 20

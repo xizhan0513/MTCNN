@@ -603,8 +603,8 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 	int w = img->cols;
 	int hs = 0, ws = 0;
 	double scale = 0;
-	int total_box[9] = {0};
-	int points = 0;
+	double total_box[20][9] = {0};
+	int points[10, 6] = 0;
 	int size [3] = {0};
 
 	for(i = 7; i <= scales_len; i++) {
