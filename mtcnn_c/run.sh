@@ -1,1 +1,1 @@
-./test ../mtcnn/test.jpg ../mtcnn/pb/mtcnn.pb 1.jpg
+./test ../src/test.jpg ../src/pb/mtcnn.pb 1.jpg

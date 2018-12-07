@@ -10,6 +10,50 @@ using namespace cv;
 
 int detect_face(Mat*, float*, double*, int);
 
+Mat get_img_data(Mat*, int, int);
+
+Mat transpose_uchar_201(Mat*);
+
+Mat  image_normalization(Mat*);
+
+Mat get_img_y(Mat*);
+
+Mat transpose_double_021(Mat);
+
+Mat expand_dims(Mat*);
+
+Mat get_pnet_out(int*, char*, int);
+
+Mat get_in0(Mat*);
+
+Mat get_in1(Mat*);
+
+Mat get_float_2D(Mat*, int);
+
+Mat generateBoundingBox(Mat*, Mat*, double, float);
+
+void get_xy(Mat*, int**, int**, float, int*);
+
+float* get_score(Mat*, int*, int*, int);
+
+Mat get_vstack(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
+
+Mat get_bb(int*, int*, int);
+
+Mat get_q1(Mat*, int, double, int);
+
+Mat get_q2(Mat*, int, double, int, int);
+
+Mat get_dims_0_to_1(float*, int);
+
+Mat get_hstack(Mat*, Mat*, Mat*, Mat*, int);
+
+
+
+
+
+
+
 void print_Mat(Mat*);
 
 void print_Mat_uchar(Mat*);
@@ -24,42 +68,10 @@ void save_diff_file_double(Mat*);
 
 void save_diff_file_3DMat(Mat*, int);
 
-Mat opencv3_transpose_201(Mat*);
-
-Mat opencv3_transpose_021(Mat*);
-
-Mat imresample(Mat*, int, int);
-
-void image_normalization(Mat*, Mat*);
-
-void expand_dims(Mat* ,Mat*);
-void expand_dims_dump(Mat* ,Mat*);
-
-Mat get_pnet_out(int, int, int, int, const char*);
-
-Mat opencv3_transpose_0132(Mat*, int);
-
-void get_2D(Mat*, Mat*, int);
-
 void save_diff_file(Mat*);
 
-Mat generateBoundingBox(Mat, Mat, double, float, Mat*);
 
-void where(Mat*, float, int*, int*);
 
-void get_value(Mat*, int*, int*, float*, int);
-
-void vstack_out(Mat*, Mat*, Mat*, Mat*, Mat*, int*, int* y, int);
-
-void vstack(Mat*, int*, int*, int);
-
-void get_q1(Mat*, Mat*, int, double);
-
-void get_q2(Mat*, Mat*, int, double, int);
-
-void expand_dims_0_to_1(float*, Mat*);
-
-void get_hstack(Mat*, Mat*, Mat*, Mat*, Mat*);
 
 short* nms(Mat*, float, const char*);
 

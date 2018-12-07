@@ -186,79 +186,6 @@ void expand_dims_dump(Mat* src, Mat*dst)
 	return ;
 }
 
-Mat get_pnet_out(int x, int y, int z, int v, const char* out_name)
-{
-	int i = 0, j = 0, k = 0, l = 0;
-	float* ptr = NULL;
-	int size[2] = {0};
-	size[0] = x;
-	size[1] = y;
-	size[2] = z;
-
-	Mat img_ret = Mat(3, size, CV_32FC(v), Scalar::all(0));
-	FILE* f = fopen(out_name, "rb");
-
-	for (i = 0; i < size[0]; i++) {
-		for (j = 0; j < size[1]; j++) {
-			for (k = 0; k < size[2]; k++) {
-				ptr = (float*)(img_ret.data + img_ret.step[0]*i + img_ret.step[1]*j + img_ret.step[2]*k);
-				for(l = 0; l < img_ret.channels(); l++) {
-					fread(ptr, 4, 1, f);
-					ptr++;
-				}
-			}
-		}
-	}
-
-	fclose(f);
-	return img_ret;
-}
-
-void get_2D(Mat* src, Mat* dst, int count)
-{
-	int i = 0, j = 0, k = 0;
-	float* pSrc = NULL;
-	float* pDst = NULL;
-
-	for (i = 0; i < dst->rows; i++) {
-		pDst = dst->ptr<float>(i);
-		pSrc = src->ptr<float>(count, i);
-		for (j = 0; j < dst->cols; j++) {
-			*pDst = *pSrc;
-			pSrc++;
-			pDst++;
-		}
-	}
-}
-
-void where(Mat* img, float t, int* x, int* y)
-{
-	int i = 0, j = 0;
-	float* ptr = NULL;
-
-	for (i = 0; i < img->rows; i++) {
-		ptr = img->ptr<float>(i);
-		for (j = 0; j < img->cols; j++) {
-			if (*ptr >= t) {
-				*x = j;
-				*y = i;
-				x++;
-				y++;
-			}
-			ptr++;
-		}
-	}
-
-	return ;
-}
-
-void get_value(Mat* img, int* y, int* x, float* score, int len){
-	int i = 0;
-	for (i = 0; i < len; i++) {
-		score[i] = *(img->ptr<float>(y[i], x[i]));
-	}
-}
-
 void vstack_out(Mat* img, Mat* dx1, Mat* dy1, Mat* dx2, Mat* dy2, int*y, int* x, int len)
 {
 	int i = 0, j = 0;
@@ -335,89 +262,6 @@ void expand_dims_0_to_1(float* src, Mat* dst)
 		pDst++;
 	}
 	return ;
-}
-
-void get_hstack(Mat* dst, Mat* q1, Mat* q2, Mat* score2, Mat* reg)
-{
-	int i = 0, j = 0;
-	double* pDst = NULL;
-	for (i = 0; i < dst->rows; i++) {
-		pDst = dst->ptr<double>(i);
-		for (j = 0; j < dst->cols; j++) {
-			if (j < q1->cols) {
-				*pDst = *(q1->ptr<double>(i, j));
-			}
-			if (q1->cols <= j && j < (q2->cols+q1->cols)) {
-				*pDst = *(q2->ptr<double>(i, j-q1->cols));
-			}
-			if ((q1->cols+q2->cols) <= j && j < (score2->cols+q2->cols+q1->cols)) {
-				*pDst = *(score2->ptr<float>(i, j-q2->cols-q1->cols));
-			}
-			if ( (q1->cols+q2->cols+score2->cols) <= j){
-				*pDst = *(reg->ptr<float>(i, j-q2->cols-q1->cols-score2->cols));
-			}
-			pDst++;
-		}
-	}
-	return ;
-}
-
-Mat generateBoundingBox(Mat imap, Mat reg, double scale, float t, Mat* vstack)
-{
-	int stride = 2;
-	int cellsize = 12;
-	int x[4] = {0};
-	int y[4] = {0};
-	float score[4] = {0};
-	Mat img_ret = Mat(4, 9, CV_64FC1, Scalar::all(0));
-	Mat bb = Mat::zeros(2, 4, CV_32FC1);
-	Mat q1 = Mat::zeros(4, 2, CV_64FC1);
-	Mat q2 = Mat::zeros(4, 2, CV_64FC1);
-	Mat score2 = Mat::zeros(4, 1, CV_32FC1);
-	Mat dx1 = Mat::zeros(reg.cols, reg.channels(), CV_32FC1);
-	Mat dx2 = Mat::zeros(reg.cols, reg.channels(), CV_32FC1);
-	Mat dy1 = Mat::zeros(reg.cols, reg.channels(), CV_32FC1);
-	Mat dy2 = Mat::zeros(reg.cols, reg.channels(), CV_32FC1);
-
-	transpose(imap, imap);
-
-	get_2D(&reg, &dx1, 0);
-	transpose(dx1, dx1);
-
-	get_2D(&reg, &dy1, 1);
-	transpose(dy1, dy1);
-
-	get_2D(&reg, &dx2, 2);
-	transpose(dx2, dx2);
-
-	get_2D(&reg, &dy2, 3);
-	transpose(dy2, dy2);
-
-	where(&imap, t, x, y);
-
-	if (sizeof(x)/sizeof(x[0]) == 1) {
-		flip(dx1, dx1, 0);
-		flip(dy1, dy1, 0);
-		flip(dx2, dx2, 0);
-		flip(dy2, dy2, 0);
-	}
-	get_value(&imap, y, x, score, 4);
-	vstack_out(vstack, &dx1, &dy1, &dx2, &dy2, y, x, 4);
-	transpose(*vstack, *vstack);
-	if (vstack->rows * vstack->cols == 0) {
-		/* reg = np.empty((0,3)); */
-	}
-
-	vstack_xy(&bb, y, x, 4);
-	transpose(bb, bb);
-
-	get_q1(&q1, &bb, stride, scale);
-	get_q2(&q2, &bb, stride, scale, cellsize);
-	expand_dims_0_to_1(score, &score2);
-
-	get_hstack(&img_ret, &q1, &q2, &score2, vstack);
-
-	return img_ret;
 }
 
 void get_boxes(Mat* img, double* x1, double* y1, double* x2, double* y2, double* s)
@@ -596,6 +440,9 @@ short* nms(Mat* img, float threshold, const char* str)
 	return ret;
 }
 
+
+
+
 int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 {
 	int i = 0;
@@ -604,62 +451,30 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 	int hs = 0, ws = 0;
 	double scale = 0;
 	double total_box[20][9] = {0};
-	int points[10, 6] = 0;
-	int size [3] = {0};
+	int points[10][6] = {0};
+	int Mat_init_size [3] = {0};
+	int pnet_init_arr[9][4] = {{1, 4, 20, 20}, {1, 4, 16, 16}, {1, 4, 13, 13}, {1, 4, 10, 10}, {1, 4, 8, 8}, {1, 4, 6, 6}, {1, 4, 5, 5}, {1, 4, 3, 3}, {1, 4, 2, 2}};
+
 
 	for(i = 7; i <= scales_len; i++) {
 		scale = scales[i];
 		hs = (int)ceil(h * scale);
 		ws = (int)ceil(w * scale);
 
-		Mat im_data = Mat::zeros(img->channels(), hs, CV_8UC(ws));
-		Mat im_data_double = Mat::zeros(img->channels(), hs, CV_64FC(ws));
+		Mat im_data = get_img_data(img, hs, ws);
+		Mat img_y = get_img_y(&im_data);
 
-		im_data = imresample(img, hs, ws);
-		image_normalization(&im_data, &im_data_double);
-
-		Mat img_x = Mat::zeros(im_data_double.rows, im_data_double.channels(), CV_64FC(im_data_double.cols));
-		size[0] = 1;
-		size[1] = img_x.rows;
-		size[2] = img_x.cols;
-		Mat img_y = Mat(3, size, CV_64FC(ws), Scalar::all(0));
-
-		img_x = opencv3_transpose_021(&im_data_double);
-		expand_dims(&img_x, &img_y);
 		/* out = pnet(img_y) */
 
-		int size[2] = {0};
-		size[0] = 1;
-		size[1] = 4;
-		size[2] = 20;
-		Mat out0 = Mat(3, size, CV_32FC(20), Scalar::all(0));
-		Mat in0 = Mat::zeros(size[1], size[2], CV_32FC(out0.channels()));
+		Mat out0 = get_pnet_out(pnet_init_arr[i-7], "out0.bin", 0);
+		Mat out1 = get_pnet_out(pnet_init_arr[i-7], "out1.bin", 1);
 
-		out0 = get_pnet_out(1, 4, 20, 20, "out0.bin");
+		Mat in0 = get_in0(&out0);
+		Mat in1 = get_in1(&out1);
 
-		size[0] = 1;
-		size[1] = 2;
-		size[2] = 20;
-		Mat out1 = Mat(3, size, CV_32FC(20), Scalar::all(0));
-		Mat in1_tmp = Mat::zeros(size[1], size[2], CV_32FC(out1.channels()));
-		Mat in1 = Mat::zeros(size[2], out1.channels(), CV_32FC1);
+		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 
-		out1 = get_pnet_out(1, 2, 20, 20, "out1.bin");
-
-		out0 = opencv3_transpose_0132(&out0, size[2]);
-		out1 = opencv3_transpose_0132(&out1, size[2]);
-
-		expand_dims_dump(&out0, &in0);
-		expand_dims_dump(&out1, &in1_tmp);
-
-		get_2D(&in1_tmp, &in1, 1);
-
-
-		Mat ret = Mat(4, 9, CV_64FC1, Scalar::all(0));
-		Mat reg = Mat::zeros(4, 4, CV_32FC1);
-		ret = generateBoundingBox(in1, in0, scale, threshold[0], &reg);
-		save_diff_file(&ret);
-		short* pack = nms(&ret, 0.5, "Union");
+		//short* pack = nms(&boxes, 0.5, "Union");
 
 		return 0;
 	}
