@@ -48,11 +48,15 @@ Mat get_dims_0_to_1(float*, int);
 
 Mat get_hstack(Mat*, Mat*, Mat*, Mat*, int);
 
+short* nms(Mat*, float, const char*, int*);
 
+void get_boxes(Mat*, double**, double**, double**, double**, double**);
 
+double* get_area(double*, double*, double*, double*, int);
 
+int* get_I(double*, int);
 
-
+int* get_idx(int*, int);
 
 void print_Mat(Mat*);
 
@@ -70,24 +74,20 @@ void save_diff_file_3DMat(Mat*, int);
 
 void save_diff_file(Mat*);
 
+double* maximum(double*, double, int*, int);
 
-
-
-short* nms(Mat*, float, const char*);
+double* minimum(double*, double, int*, int);
 
 void get_boxes(Mat*, double*, double*, double*, double*, double*);
 
-void get_area(double*, double*, double*, double*, double*);
+double* get_wh(double*, double*, double, int);
 
-void get_argsort(double*, int*);
+double* get_inter(double*, double*, int);
 
-void maximum(double*, double*, double, int*, int);
+double* get_o(double*, double*, int, int*, int);
 
-void minimum(double*, double*, double, int*, int);
-int* get_idx(double*, int);
-void get_wh(double*, double*, double*, double);
+void updata_I(int**, double*, float, int*);
 
-void get_inter(double*, double*, double*);
+short* get_pick(short*, int);
 
-void get_o(double, double, double, int, int*);
 #endif
