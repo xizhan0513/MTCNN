@@ -20,6 +20,7 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 	int Mat_init_size [3] = {0};
 	int pnet_init_arr[9][4] = {{1, 4, 20, 20}, {1, 4, 16, 16}, {1, 4, 13, 13}, {1, 4, 10, 10}, {1, 4, 8, 8}, {1, 4, 6, 6}, {1, 4, 5, 5}, {1, 4, 3, 3}, {1, 4, 2, 2}};
 	int pack_len = 0;
+	short* pack = NULL;
 
 	const char* out_file[18] = {"0.0", "0.1", "1.0", "1.1", "2.0", "2.1", "3.0", "3.1", "4.0", "4.1", "5.0", "5.1", "6.0", "6.1", "7.0", "7.1", "8.0", "8.1"};
 	int out_file_index = 0;
@@ -44,19 +45,85 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 
 		Mat boxes1 = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 
-		short* pack = nms(&boxes1, 0.5, "Union", &pack_len);
+		pack = nms(&boxes1, 0.5, "Union", &pack_len);
 		if (pack == NULL) {
 			printf("nms failed\n");
 			return -1;
 		}
 
 		if ((boxes1.rows * boxes1.cols > 0) && (pack_len > 0)) {
-			Mat boxes2 = get_boxes2(&boxes1, pack, pack_len);
+			Mat boxes2 = get_boxes_from_pack(&boxes1, pack, pack_len);
 			total_box = get_total_box(&total_box, &boxes2);
 		}
 
 		free(pack);
 	}
+
+	unsigned int numbox = total_box.rows;
+
+	if (numbox > 0) {
+		pack = nms(&total_box, 0.7, "Union", &pack_len);
+		total_box = get_boxes_from_pack(&total_box, pack, pack_len);
+		int len = total_box.rows;
+		double* regw = get_reg_wh(&total_box, 2, 0);
+		double* regh = get_reg_wh(&total_box, 3, 1);
+		double* qq1 = get_qq(&total_box, 0, 5, regw);
+		double* qq2 = get_qq(&total_box, 1, 6, regh);
+		double* qq3 = get_qq(&total_box, 2, 7, regw);
+		double* qq4 = get_qq(&total_box, 3, 8, regh);
+
+		total_box = get_vstack_qq_and_transpose(qq1, qq2, qq3, qq4, &total_box, 4);
+
+		rerec(&total_box);
+
+		get_total_boxes_fix(&total_box, 0, 4, 0, 4);
+
+		int* dy = (int*)malloc(total_box.rows * sizeof(int));
+		int* edy = (int*)malloc(total_box.rows * sizeof(int));
+		int* dx = (int*)malloc(total_box.rows * sizeof(int));
+		int* edx = (int*)malloc(total_box.rows * sizeof(int));
+		int* y = (int*)malloc(total_box.rows * sizeof(int));
+		int* ey = (int*)malloc(total_box.rows * sizeof(int));
+		int* x = (int*)malloc(total_box.rows * sizeof(int));
+		int* ex = (int*)malloc(total_box.rows * sizeof(int));
+		int* tmpw = (int*)malloc(total_box.rows * sizeof(int));
+		int* tmph = (int*)malloc(total_box.rows * sizeof(int));
+
+		pad(&total_box, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
+		/*int x = 0;
+		for (x = 0; x < len; x++) {
+			printf("%.10f ", qq1[x]);
+		}
+		printf("\n");
+*/
+		free(pack);
+		free(regw);
+		free(regh);
+		free(qq1);
+		free(qq2);
+		free(qq3);
+		free(qq4);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	return 0;
 }

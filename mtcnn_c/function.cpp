@@ -634,7 +634,7 @@ void updata_I(int** I, double* o, float threshold, int* len)
 
 		for (i = 0; i < *len; i++) {
 			tmp_arr[i] = (*I)[i];
-			if (o[i] < threshold)
+			if (o[i] <= threshold)
 			    count++;
 		}
 
@@ -729,7 +729,7 @@ short* nms(Mat* img, float threshold, const char* str, int* pack_len)
     return get_pick(pick, counter);
 }
 
-Mat get_boxes2(Mat* img, short* pack, int pack_len)
+Mat get_boxes_from_pack(Mat* img, short* pack, int pack_len)
 {
 	int i = 0, j = 0;
 	double* ptr_double_src = NULL;
@@ -774,3 +774,223 @@ Mat get_total_box(Mat* total_box, Mat* boxes2)
 
 	return ret_img;
 }
+
+double* get_reg_wh(Mat* img, int x, int y)
+{
+	int i = 0;
+	double* ret_ptr = (double*)malloc(img->rows * sizeof(double));
+
+	for (i = 0; i < img->rows; i++) {
+		ret_ptr[i] = *(img->ptr<double>(i, x)) - *(img->ptr<double>(i, y));
+	}
+
+	return ret_ptr;
+}
+
+double* get_qq(Mat* img, int x, int y, double* reg)
+{
+	int i = 0;
+	double* ret_ptr = (double*)malloc(img->rows * sizeof(double));
+
+	for (i = 0; i < img->rows; i++) {
+		ret_ptr[i] = *(img->ptr<double>(i, x)) + *(img->ptr<double>(i, y)) * reg[i];
+	}
+
+	return ret_ptr;
+}
+
+Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* qq4, Mat* total_box, int index)
+{
+	int i = 0, j = 0;
+	double* ptr_double = NULL;
+	Mat ret_img = Mat::zeros(total_box->rows, 5, CV_64FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		*(ret_img.ptr<double>(i, 0))= qq1[i];
+	}
+	for (i = 0; i < ret_img.rows; i++) {
+		*(ret_img.ptr<double>(i, 1))= qq2[i];
+	}
+	for (i = 0; i < ret_img.rows; i++) {
+		*(ret_img.ptr<double>(i, 2))= qq3[i];
+	}
+	for (i = 0; i < ret_img.rows; i++) {
+		*(ret_img.ptr<double>(i, 3))= qq4[i];
+	}
+	for (i = 0; i < ret_img.rows; i++) {
+		*(ret_img.ptr<double>(i, 4))= *(total_box->ptr<double>(i, index));
+	}
+
+	return ret_img;
+}
+
+void get_bboxA(Mat* img, double* x, double* y, int index)
+{
+	int i = 0;
+
+	for (i = 0; i < img->rows; i++) {
+		*(img->ptr<double>(i, index)) = *(img->ptr<double>(i, index)) + x[i] * 0.5 - y[i] * 0.5;
+	}
+
+	return ;
+}
+
+Mat tile(double* l, int y, int x, int len)
+{
+	int i = 0, j = 0;
+	double* ptr_double = NULL;
+	Mat ret_img = Mat::zeros(y, len * x, CV_64FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+			ptr_double = (double*)ret_img.ptr<double>(i);
+		for (j = 0; j < ret_img.cols; j++) {
+			*ptr_double = l[j];
+			ptr_double++;
+		}
+	}
+
+	transpose(ret_img, ret_img);
+
+	return ret_img;
+}
+
+void get_ret_rerec(Mat* img, int xs, int xe, int ys, int ye, Mat* tmp)
+{
+	int i = 0, j = 0;
+	double* ptr_double_src = NULL;
+	double* ptr_double_dst = NULL;
+
+	for (i = 0; i < img->rows; i++) {
+		ptr_double_src = (double*)img->ptr<double>(i, xs);
+		ptr_double_dst = (double*)img->ptr<double>(i, ys);
+		for (j = 0; j < (xe-xs); j++) {
+			*ptr_double_dst = *ptr_double_src + *(tmp->ptr<double>(i, j));
+			ptr_double_src++;
+			ptr_double_dst++;
+		}
+	}
+
+	return ;
+}
+
+void rerec(Mat* img)
+{
+	int i = 0;
+	double* h = get_reg_wh(img, 3, 1);
+	double* w = get_reg_wh(img, 2, 0);
+
+	double* l = (double*)malloc(img->rows * sizeof(double));
+	for (i = 0; i < img->rows; i++) {
+		l[i] = (h[i] >= w[i] ? h[i] : w[i]);
+	}
+
+	get_bboxA(img, w, l, 0);
+	get_bboxA(img, h, l, 1);
+
+	Mat tmp = tile(l, 2, 1, img->rows);
+
+	get_ret_rerec(img, 0, 2, 2, 4, &tmp);
+
+	free(l);
+	free(h);
+	free(w);
+
+	return ;
+}
+
+void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
+{
+	int i = 0, j = 0;
+	double* ptr_double_src = NULL;
+	double* ptr_double_dst = NULL;
+
+	for (i = 0; i < img->rows; i++) {
+		ptr_double_src = (double*)img->ptr<double>(i, xs);
+		ptr_double_dst = (double*)img->ptr<double>(i, ys);
+		for (j = 0; j < (xe - xs); j++) {
+			*ptr_double_dst = floor(*ptr_double_src);
+			ptr_double_src++;
+			ptr_double_dst++;
+		}
+	}
+
+	return ;
+}
+
+void get_tmpwh(Mat* img, int* tmp, int x, int y)
+{
+	int i = 0, j = 0;
+
+	for (i = 0; i < img->rows; i++) {
+		tmp[i] = *(img->ptr<double>(i, x)) - *(img->ptr<double>(i, y)) + 1;
+	}
+
+	return ;
+}
+
+void init_dx_dy_edx_edy(int* dx, int* dy, int* edx, int* edy, int* tmpw, int* tmph, int numbox)
+{
+	int i = 0;
+
+	for (i = 0; i < numbox; i++) {
+		dx[i] = 1;
+		dy[i] = 1;
+		edx[i] = tmpw[i];
+		edx[i] = tmph[i];
+	}
+
+	return ;
+}
+
+void init_x_y_ex_ey(Mat* img, int* x, int* y, int* ex, int* ey)
+{
+	int i = 0, j = 0;;
+
+	for (i = 0; i < img->rows; i++) {
+		x[i] = *(img->ptr<double>(i, 0));
+	}
+	for (i = 0; i < img->rows; i++) {
+		y[i] = *(img->ptr<double>(i, 1));
+	}
+	for (i = 0; i < img->rows; i++) {
+		ex[i] = *(img->ptr<double>(i, 2));
+	}
+	for (i = 0; i < img->rows; i++) {
+		ey[i] = *(img->ptr<double>(i, 3));
+	}
+
+	return ;
+}
+
+void pad(Mat* img, int h, int w, int* dy, int* edy, int* dx, int* edx, int* y, int* ey, int* x, int* ex, int* tmpw, int* tmph)
+{
+	get_tmpwh(img, tmpw, 2, 0);
+	get_tmpwh(img, tmph, 3, 1);
+
+	int numbox = img->rows;
+
+	init_dx_dy_edx_edy(dx, dy, edx, edy, tmpw, tmph, numbox);
+	init_x_y_ex_ey(img, x, y, ex, ey);
+
+	//init_tmp(ex, w);
+
+	/*int xz = 0;
+    for (xz = 0; xz < img->rows; xz++) {
+	    printf("%d ", tmph[xz]);
+    }
+    printf("\n");*/
+
+	return ;
+}
+
+
+
+
+
+
+
+
+
+
+
+

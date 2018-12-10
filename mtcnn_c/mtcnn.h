@@ -90,8 +90,30 @@ void updata_I(int**, double*, float, int*);
 
 short* get_pick(short*, int);
 
-Mat get_boxes2(Mat*, short*, int);
+Mat get_boxes_from_pack(Mat*, short*, int);
 
 Mat get_total_box(Mat*, Mat*);
+
+double* get_reg_wh(Mat*, int, int);
+
+double* get_qq(Mat*, int, int, double*);
+
+Mat get_vstack_qq_and_transpose(double*, double*, double*, double*, Mat*, int);
+
+void rerec(Mat*);
+
+void get_bboxA(Mat*, double*, double*, int);
+
+Mat tile(double*, int, int, int);
+
+void get_ret_rerec(Mat*, int, int, int, int, Mat*);
+
+void get_total_boxes_fix(Mat*, int, int, int, int);
+
+void pad(Mat*, int, int, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
+
+void init_dx_dy_edx_edy(int*, int*, int*, int*, int*, int*, int);
+
+void init_x_y_ex_ey(Mat*, int*, int*, int*, int*);
 
 #endif
