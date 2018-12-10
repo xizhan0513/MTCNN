@@ -1,10 +1,10 @@
 import sys
 import os
 
-def save_diff_file(img):
+def save_diff_file(img, file_name):
     img_size = img.shape
 
-    f = open("diff.bin", 'wb+')
+    f = open(file_name, 'wb+')
 
     for i in range(0, img_size[0]):
         for j in range(0, img_size[1]):

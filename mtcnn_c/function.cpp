@@ -190,7 +190,7 @@ Mat get_img_y(Mat* img)
     return expand_dims(&img_x);
 }
 
-Mat get_pnet_out(int* pnet_init_arr, char* str, int flag)
+Mat get_pnet_out(int* pnet_init_arr, const char* str, int flag)
 {
     int i = 0, j = 0, k = 0, l = 0;
     float* ptr_float = NULL;
@@ -286,7 +286,7 @@ float* get_score(Mat* img, int* y, int *x, int xy_len)
 Mat get_vstack(Mat* dx1, Mat* dy1, Mat* dx2, Mat* dy2, int* y, int* x, int xy_len)
 {
     int i = 0;
-    Mat ret_img = Mat::zeros(xy_len, xy_len, CV_32FC1);
+    Mat ret_img = Mat::zeros(4, xy_len, CV_32FC1);
 
     for (i = 0; i < xy_len; i++) {
         *(ret_img.ptr<float>(0, i)) = *(dx1->ptr<float>(y[i], x[i]));
@@ -729,3 +729,48 @@ short* nms(Mat* img, float threshold, const char* str, int* pack_len)
     return get_pick(pick, counter);
 }
 
+Mat get_boxes2(Mat* img, short* pack, int pack_len)
+{
+	int i = 0, j = 0;
+	double* ptr_double_src = NULL;
+	double* ptr_double_dst = NULL;
+
+	Mat ret_img = Mat::zeros(pack_len, img->cols, CV_64FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		ptr_double_src = img->ptr<double>(pack[i]);
+		ptr_double_dst = ret_img.ptr<double>(i);
+		for (j = 0; j < ret_img.cols; j++) {
+			*ptr_double_dst = *ptr_double_src;
+			ptr_double_src++;
+			ptr_double_dst++;
+		}
+	}
+
+	return ret_img;
+}
+
+Mat get_total_box(Mat* total_box, Mat* boxes2)
+{
+	int i = 0, j = 0;
+	double* ptr_src = NULL;
+	double* ptr_dst = NULL;
+
+	Mat ret_img = Mat::zeros((total_box->rows + boxes2->rows), boxes2->cols, CV_64FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		if (i < total_box->rows) {
+			ptr_src = total_box->ptr<double>(i);
+		} else {
+			ptr_src = boxes2->ptr<double>(i - total_box->rows);
+		}
+		ptr_dst = ret_img.ptr<double>(i);
+		for (j = 0; j < ret_img.cols; j++) {
+			*ptr_dst = *ptr_src;
+			ptr_src++;
+			ptr_dst++;
+		}
+	}
+
+	return ret_img;
+}

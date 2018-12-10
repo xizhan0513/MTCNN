@@ -1,7 +1,8 @@
 import numpy as np
 import cv2
 from tools import *
-np.set_printoptions(threshold=np.inf)
+#np.set_printoptions(threshold=np.inf)
+np.set_printoptions(suppress=True)
 
 def detect_face(img, pnet, rnet, onet, threshold, scales):
 
@@ -30,6 +31,35 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         img_x = np.expand_dims(im_data, 0)
         img_y = np.transpose(img_x, (0,1,3,2))
         out = pnet(img_y)
+
+        if j == 7:
+            save_diff_file(out[0], "0.0")
+            save_diff_file(out[1], "0.1")
+        if j == 8:
+            save_diff_file(out[0], "1.0")
+            save_diff_file(out[1], "1.1")
+        if j == 9:
+            save_diff_file(out[0], "2.0")
+            save_diff_file(out[1], "2.1")
+        if j == 10:
+            save_diff_file(out[0], "3.0")
+            save_diff_file(out[1], "3.1")
+        if j == 11:
+            save_diff_file(out[0], "4.0")
+            save_diff_file(out[1], "4.1")
+        if j == 12:
+            save_diff_file(out[0], "5.0")
+            save_diff_file(out[1], "5.1")
+        if j == 13:
+            save_diff_file(out[0], "6.0")
+            save_diff_file(out[1], "6.1")
+        if j == 14:
+            save_diff_file(out[0], "7.0")
+            save_diff_file(out[1], "7.1")
+        if j == 15:
+            save_diff_file(out[0], "8.0")
+            save_diff_file(out[1], "8.1")
+
         out0 = np.transpose(out[0], (0,1,3,2))
         out1 = np.transpose(out[1], (0,1,3,2))
 

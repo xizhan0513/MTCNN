@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 		unsigned int factor_count = 0;
 		unsigned int h = img.rows;
 		unsigned int w = img.cols;
-		long int minl = h < w ? h : w;
+		double minl = h < w ? h : w;
 		float m = 12.0 / minsize;
 		double scales[16] = {0};
 		int scales_len = sizeof(scales) / sizeof(scales[0]);

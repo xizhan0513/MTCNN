@@ -22,7 +22,7 @@ Mat transpose_double_021(Mat);
 
 Mat expand_dims(Mat*);
 
-Mat get_pnet_out(int*, char*, int);
+Mat get_pnet_out(int*, const char*, int);
 
 Mat get_in0(Mat*);
 
@@ -89,5 +89,9 @@ double* get_o(double*, double*, int, int*, int);
 void updata_I(int**, double*, float, int*);
 
 short* get_pick(short*, int);
+
+Mat get_boxes2(Mat*, short*, int);
+
+Mat get_total_box(Mat*, Mat*);
 
 #endif
