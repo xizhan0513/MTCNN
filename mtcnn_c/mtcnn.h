@@ -30,6 +30,8 @@ Mat expand_dims(Mat*);
 
 Mat get_pnet_out(int*, const char*, int);
 
+Mat get_rnet_out(int*, const char*, int);
+
 Mat get_in0(Mat*);
 
 Mat get_in1(Mat*);
@@ -42,7 +44,7 @@ void get_xy(Mat*, int**, int**, float, int*);
 
 float* get_score(Mat*, int*, int*, int);
 
-Mat get_vstack(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
+Mat get_vstack_pnet(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
 
 Mat get_bb(int*, int*, int);
 
@@ -52,7 +54,9 @@ Mat get_q2(Mat*, int, double, int, int);
 
 Mat get_dims_0_to_1(float*, int);
 
-Mat get_hstack(Mat*, Mat*, Mat*, Mat*, int);
+Mat get_hstack_pnet(Mat*, Mat*, Mat*, Mat*, int);
+
+Mat get_hstack_rnet(Mat*, int*, int, int, float*, int);
 
 short* nms(Mat*, float, const char*, int*);
 
@@ -132,5 +136,10 @@ void get_tempimg(Mat*, Mat*, int, int);
 
 Mat transpose3021(Mat*, int);
 
+float* get_score_out(Mat*, int, int);
+
+int* get_ipass(float*, float, int, int*);
+
+Mat get_mv(Mat*, int*, int);
 
 #endif

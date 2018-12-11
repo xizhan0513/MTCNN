@@ -118,18 +118,45 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 		}
 
 		image_normalization_double(&tempimg, Mat_init_size[2]);
-
 		Mat tempimg1 = transpose3021(&tempimg, Mat_init_size[2]);
+
+		int rnet_init_arr[2] = {17, 4};
+		Mat out0 = get_rnet_out(rnet_init_arr, "rout0.bin", 0);
+		Mat out1 = get_rnet_out(rnet_init_arr, "rout1.bin", 1);
+
+		transpose(out0, out0);
+		transpose(out1, out1);
+		int len = out0.cols;
+		float* score = get_score_out(&out1, 1, len);
+		int ipass_len = 0;
+		int* ipass = get_ipass(score, threshold[1], len, &ipass_len);
+
+		total_box = get_hstack_rnet(&total_box, ipass, 0, 4, score, ipass_len);
+
+		Mat mv = get_mv(&out0, ipass, ipass_len);
+
+
+		/*save_diff_file(&mv);
+		print_Mat(&mv);
+*/
+		/*int x = 0;
+		for (x = 0; x < ipass_len; x++) {
+			printf("%d ", ipass[x]);
+		}
+		printf("\n");
+*/
+
+		free(ipass);
+		free(score);
+
+
+
+
+
 	}
 
 
 
-		/*int x = 0;
-		for (x = 0; x < len; x++) {
-			printf("%.10f ", qq1[x]);
-		}
-		printf("\n");
-*/
 		free(dy);
 		free(edy);
 		free(dx);

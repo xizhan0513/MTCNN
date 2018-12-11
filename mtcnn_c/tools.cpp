@@ -137,13 +137,13 @@ void save_diff_file_3DMat(Mat* img, int img_len)
 void save_diff_file(Mat* img)
 {
 	int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
+    float* ptr = NULL;
 	FILE* f = fopen("tmp.bin", "wb+");
 
     for (i = 0; i < img->rows; i++) {
-        ptr = img->ptr<double>(i);
+        ptr = img->ptr<float>(i);
         for (j = 0; j < img->cols; j++) {
-			fwrite(ptr, 8, 1, f);
+			fwrite(ptr, 4, 1, f);
             ptr++;
         }
     }
@@ -154,11 +154,11 @@ void save_diff_file(Mat* img)
 void print_Mat(Mat* img)
 {
 	int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
+    float* ptr = NULL;
 
     for (i = 0; i < img->rows; i++) {
         printf("[");
-		ptr = img->ptr<double>(i);
+		ptr = img->ptr<float>(i);
         for (j = 0; j < img->cols; j++) {
             printf("%.8f ", *ptr);
 			ptr++;

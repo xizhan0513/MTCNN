@@ -272,6 +272,27 @@ Mat get_pnet_out(int* pnet_init_arr, const char* str, int flag)
     return ret_img;
 }
 
+Mat get_rnet_out(int* pnet_init_arr, const char* str, int flag)
+{
+    int i = 0, j = 0, k = 0, l = 0;
+    float* ptr_float = NULL;
+
+    FILE* f = fopen(str, "rb");
+    Mat ret_img = Mat::zeros(pnet_init_arr[0], flag == 0 ? pnet_init_arr[1] : (pnet_init_arr[1] - 2), CV_32FC1);
+
+    for (i = 0; i < ret_img.rows; i++) {
+        for (j = 0; j < ret_img.cols; j++) {
+            ptr_float = ret_img.ptr<float>(i, j);
+            for (k = 0; k < ret_img.channels(); k++) {
+                fread(ptr_float, 4, 1, f);
+                ptr_float++;
+            }
+        }
+    }
+
+    return ret_img;
+}
+
 Mat get_in0(Mat* img)
 {
     return transpose_float_021(img);
@@ -438,7 +459,7 @@ Mat get_dims_0_to_1(float* score, int xy_len)
     return ret_img;
 }
 
-Mat get_hstack(Mat* q1, Mat* q2, Mat* score_mat, Mat* vstack, int xy_len)
+Mat get_hstack_pnet(Mat* q1, Mat* q2, Mat* score_mat, Mat* vstack, int xy_len)
 {
     int i = 0, j = 0;
     double* ptr_double = NULL;
@@ -509,7 +530,7 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
 
     Mat score_mat = get_dims_0_to_1(score, xy_len);
 
-    Mat img_ret = get_hstack(&q1, &q2, &score_mat, &vstack, xy_len);
+    Mat img_ret = get_hstack_pnet(&q1, &q2, &score_mat, &vstack, xy_len);
     free(score);
     free(y);
     free(x);
@@ -1149,7 +1170,75 @@ Mat transpose3021(Mat* img, int len)
 	return ret_img;
 }
 
+float* get_score_out(Mat* img, int index, int len)
+{
+	int i = 0;
+	float* ret_ptr = (float*)malloc(len * sizeof(float));
 
+	for (i = 0; i < len; i++) {
+		ret_ptr[i] = *(img->ptr<float>(index, i));
+	}
+
+	return ret_ptr;
+}
+
+int* get_ipass(float* score, float threshold, int len, int* ipass_len)
+{
+	int i = 0;
+	int count = 0;
+
+	for (i = 0; i < len; i++) {
+		if (score[i] > threshold)
+			count++;
+	}
+
+	*ipass_len = count;
+	int* ret_ptr = (int*)malloc(count * sizeof(int));
+	int* tmp_ptr = ret_ptr;
+
+	for (i = 0; i < len; i++) {
+		if (score[i] > threshold) {
+			*tmp_ptr = i;
+			tmp_ptr++;
+		}
+	}
+
+	return ret_ptr;
+}
+
+Mat get_hstack_rnet(Mat* img, int* ipass, int x, int y, float* score, int ipass_len)
+{
+	int i = 0, j = 0;
+
+	Mat ret_img = Mat::zeros(ipass_len, img->cols, CV_64FC1);
+
+	for(i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			if (x <= j && j < y) {
+				*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(ipass[i], j));
+			} else {
+				*(ret_img.ptr<double>(i, j)) = score[ipass[i]];
+			}
+		}
+	}
+
+	return ret_img;
+}
+
+Mat get_mv(Mat* img, int* ipass, int ipass_len)
+{
+	int i = 0, j = 0;
+
+	Mat ret_img = Mat::zeros(img->rows, ipass_len, CV_32FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(i, ipass[j]));
+		}
+	}
+
+	return ret_img;
+}
 
 
 
