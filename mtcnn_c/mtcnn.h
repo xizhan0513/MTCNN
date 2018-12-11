@@ -10,11 +10,17 @@ using namespace cv;
 
 int detect_face(Mat*, float*, double*, int);
 
-Mat get_img_data(Mat*, int, int);
+Mat imresample_uchar(Mat*, int, int);
+
+Mat imresample_double(Mat*, int, int);
 
 Mat transpose_uchar_201(Mat*);
 
-Mat  image_normalization(Mat*);
+Mat transpose_double_201(Mat*);
+
+Mat  image_normalization_uchar(Mat*);
+
+void  image_normalization_double(Mat*, int);
 
 Mat get_img_y(Mat*);
 
@@ -115,5 +121,16 @@ void pad(Mat*, int, int, int*, int*, int*, int*, int*, int*, int*, int*, int*, i
 void init_dx_dy_edx_edy(int*, int*, int*, int*, int*, int*, int);
 
 void init_x_y_ex_ey(Mat*, int*, int*, int*, int*);
+
+void set_exy(int*, int*, int, int*, int);
+
+void set_xy(int*, int*, int, int);
+
+void buckle_map(Mat*, Mat*, int*, int*, int*, int*, int*, int*, int*, int*, int);
+
+void get_tempimg(Mat*, Mat*, int, int);
+
+Mat transpose3021(Mat*, int);
+
 
 #endif

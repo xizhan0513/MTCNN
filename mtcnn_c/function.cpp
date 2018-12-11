@@ -7,7 +7,7 @@
 using namespace std;
 using namespace cv;
 
-Mat image_normalization(Mat* img)
+Mat image_normalization_uchar(Mat* img)
 {
     int i = 0, j = 0, k = 0;
     unsigned char* ptr_uchar = NULL;
@@ -27,6 +27,26 @@ Mat image_normalization(Mat* img)
     }
 
     return ret_img;
+}
+
+void image_normalization_double(Mat* img, int len)
+{
+    int i = 0, j = 0, k = 0, v = 0;
+    double* ptr = NULL;
+
+    for (i = 0; i < img->size().height; i++) {
+        for (j = 0; j < img->size().width; j++) {
+            for (k = 0; k < len; k++) {
+				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
+				for (v = 0; v < img->channels(); v++) {
+                *ptr = (*ptr-127.5) * 0.0078125;
+                ptr++;
+				}
+            }
+        }
+    }
+
+    return ;
 }
 
 Mat transpose_uchar_201(Mat* img)
@@ -59,8 +79,42 @@ Mat transpose_uchar_201(Mat* img)
         }
     }
 
-    return image_normalization(&ret_img);
+    return image_normalization_uchar(&ret_img);
 }
+
+Mat transpose_double_201(Mat* img)
+{
+    int i = 0, j = 0, k = 0;
+    int x = 0, y = 0, z = 0;
+    int xe = 0, ye = 0;
+    double* ptr = NULL;
+    Mat ret_img = Mat::zeros(img->channels(), img->rows, CV_64FC(img->cols));
+
+    xe = img->rows;
+    ye = img->cols;
+
+    for (i = 0; i < ret_img.rows; i++) {
+        for (j = 0; j < ret_img.cols; j++) {
+            ptr = ret_img.ptr<double>(i, j);
+            for (k = 0; k < ret_img.channels(); k++) {
+                *ptr = *((double*)(img->data + img->step[0]*x + img->step[1]*y) + z);
+                ptr++;
+                y++;
+                if (y == ye) {
+                    y = 0;
+                    x++;
+                    if (x == xe) {
+                        z++;
+                        x = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    return ret_img;
+}
+
 
 Mat transpose_double_021(Mat* img)
 {
@@ -177,11 +231,18 @@ Mat get_float_2D(Mat* img, int count)
     return ret_img;
 }
 
-Mat get_img_data(Mat* img, int hs, int ws)
+Mat imresample_uchar(Mat* img, int hs, int ws)
 {
     Mat tmp_img;
     resize(*img, tmp_img, Size(ws, hs), 0, 0, INTER_AREA);
     return transpose_uchar_201(&tmp_img);
+}
+
+Mat imresample_double(Mat* img, int hs, int ws)
+{
+    Mat tmp_img;
+    resize(*img, tmp_img, Size(ws, hs), 0, 0, INTER_AREA);
+	return transpose_double_201(&tmp_img);
 }
 
 Mat get_img_y(Mat* img)
@@ -936,7 +997,7 @@ void init_dx_dy_edx_edy(int* dx, int* dy, int* edx, int* edy, int* tmpw, int* tm
 		dx[i] = 1;
 		dy[i] = 1;
 		edx[i] = tmpw[i];
-		edx[i] = tmph[i];
+		edy[i] = tmph[i];
 	}
 
 	return ;
@@ -962,8 +1023,48 @@ void init_x_y_ex_ey(Mat* img, int* x, int* y, int* ex, int* ey)
 	return ;
 }
 
+void set_exy(int* edx, int* ex, int w, int* tmpw, int len)
+{
+	int i = 0;
+	int tmp[len] = {0};
+
+	for (i = 0; i < len; i++) {
+		tmp[i] = ex[i] > w ? i : -1;
+	}
+
+	for (i = 0; i < len; i++) {
+		if (tmp[i] >= 0) {
+			edx[i] = 0 - ex[i] + w + tmpw[i];
+			ex[i] = w;
+		}
+	}
+
+	return ;
+}
+
+void set_xy(int* dx, int* x, int w, int len)
+{
+	int i = 0;
+	int tmp[len] = {0};
+
+	for (i = 0; i < len; i++) {
+		tmp[i] = x[i] < w ? i : -1;
+	}
+
+	for (i = 0; i < len; i++) {
+		if (tmp[i] >= 0) {
+			dx[i] = 2 - x[i];
+			x[i] = w;
+		}
+	}
+
+	return ;
+}
+
 void pad(Mat* img, int h, int w, int* dy, int* edy, int* dx, int* edx, int* y, int* ey, int* x, int* ex, int* tmpw, int* tmph)
 {
+	int i = 0;
+
 	get_tmpwh(img, tmpw, 2, 0);
 	get_tmpwh(img, tmph, 3, 1);
 
@@ -972,23 +1073,81 @@ void pad(Mat* img, int h, int w, int* dy, int* edy, int* dx, int* edx, int* y, i
 	init_dx_dy_edx_edy(dx, dy, edx, edy, tmpw, tmph, numbox);
 	init_x_y_ex_ey(img, x, y, ex, ey);
 
-	//init_tmp(ex, w);
-
-	/*int xz = 0;
-    for (xz = 0; xz < img->rows; xz++) {
-	    printf("%d ", tmph[xz]);
-    }
-    printf("\n");*/
+	set_exy(edx, ex, w, tmpw, numbox);
+	set_exy(edy, ey, h, tmph, numbox);
+	set_xy(dx, x, 1, numbox);
+	set_xy(dy, y, 1, numbox);
 
 	return ;
 }
 
+void buckle_map(Mat* img, Mat* tmp, int* x, int* ex, int* y, int* ey, int* dx, int* edx, int* dy, int* edy, int k)
+{
+	int i = 0, j = 0, v = 0;
+	uchar* src = NULL;
+	double* dst = NULL;
 
+	for (i = 0; i < (ey[k] - y[k] + 1); i++) {
+		for (j = 0; j < (ex[k] - x[k] + 1); j++) {
+			src = (unsigned char*)img->ptr<uchar>((y[k] - 1 + i), (x[k] - 1 + j));
+			dst = (double*)tmp->ptr<double>((dy[k] - 1 + i), (dx[k] - 1 + j));
+			for (v = 0; v < img->channels(); v++) {
+				*dst = *src;
+				src++;
+				dst++;
+			}
+		}
+	}
 
+	return ;
+}
 
+void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
+{
+	int i = 0, j = 0, v = 0, z = 0;
+	double* src = NULL;
+	double* dst = (double*)tempimg->data + k;
 
+	for (i = 0; i < tempimg->size().height; i++) {
+		for (j = 0; j < tempimg->size().width; j++) {
+			src = (double*)tmp_tempimg->ptr<double>(i, j);
+			for (v = 0; v < len; v++) {
+				*dst = *src;
+				src++;
+				dst += tempimg->channels();
+			}
+		}
+	}
 
+	return ;
+}
 
+Mat transpose3021(Mat* img, int len)
+{
+	int i = 0, j = 0, k = 0, v = 0;
+	double* src = NULL;
+	double* dst = NULL;
+
+	int Mat_init_size[3] = {0};
+	Mat_init_size[0] = img->channels();
+	Mat_init_size[1] = img->size().height;
+	Mat_init_size[2] = len;
+	Mat ret_img = Mat(3, Mat_init_size, CV_64FC(img->size().width));
+
+	for (i = 0; i < ret_img.size().height; i++) {
+		for (j = 0; j < ret_img.size().width; j++) {
+			for (k = 0; k < Mat_init_size[2]; k++) {
+				dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
+				for (v = 0; v < ret_img.channels(); v++) {
+					*dst = *(((double*)(img->data + img->step[0] * j + img->step[1] * v + img->step[2] * k)) + i);
+					dst++;
+				}
+			}
+		}
+	}
+
+	return ret_img;
+}
 
 
 
