@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <iostream>
 #include <math.h>
 #include "mtcnn.h"
 #include <opencv2/core/core.hpp>
@@ -44,7 +44,13 @@ int main(int argc, char* argv[])
 			i++;
 		}
 
-		int ret = detect_face(&img, threshold, scales, scales_len);
+		Mat points;
+		Mat bounding_boxes = detect_face(&img, threshold, scales, scales_len, &points);
+		Mat _landmark = points.reshape(0, 2).t();
+
+		Mat warped = face_preprocess(&img, &_landmark);
+		cvtColor(warped, warped, CV_RGB2BGR, 3);
+		imwrite("1.jpg", warped);
 	}
 
 	return 0;

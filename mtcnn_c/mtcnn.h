@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-int detect_face(Mat*, float*, double*, int);
+Mat detect_face(Mat*, float*, double*, int, Mat*);
 
 Mat imresample_uchar(Mat*, int, int);
 
@@ -31,6 +31,8 @@ Mat expand_dims(Mat*);
 Mat get_pnet_out(int*, const char*, int);
 
 Mat get_rnet_out(int*, const char*, int);
+
+Mat get_onet_out(int*, const char*);
 
 Mat get_in0(Mat*);
 
@@ -141,5 +143,27 @@ float* get_score_out(Mat*, int, int);
 int* get_ipass(float*, float, int, int*);
 
 Mat get_mv(Mat*, int*, int);
+
+Mat get_total_boxes_pick(Mat*, short*, int len);
+
+Mat transpose_mv_piack(Mat*, short*, int);
+
+void bbreg(Mat*, Mat*);
+
+void get_wh_bbreg(Mat*, Mat*, double*, double*, double*, double*, double*, double*, int);
+
+void get_wh_bbreg(Mat*, double*, double*, int);
+
+Mat fix_total_boxes(Mat*);
+
+Mat get_points(Mat*, int*, int);
+
+void updata_points(Mat*, Mat*, double*, double*, int);
+
+double* get_o_Min(double*, double*, int);
+
+Mat  points_pick(Mat*, short*, int);
+
+Mat face_preprocess(Mat*, Mat*);
 
 #endif

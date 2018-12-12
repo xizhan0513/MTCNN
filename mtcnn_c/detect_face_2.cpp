@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
+Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat* pointss)
 {
 	int i = 0;
 	int h = img->rows;
@@ -48,7 +48,7 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 		pack = nms(&boxes1, 0.5, "Union", &pack_len);
 		if (pack == NULL) {
 			printf("nms failed\n");
-			return -1;
+			return boxes1;
 		}
 
 		if ((boxes1.rows * boxes1.cols > 0) && (pack_len > 0)) {
@@ -76,6 +76,7 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 	int* ex = (int*)malloc(total_box.rows * sizeof(int));
 	int* tmpw = (int*)malloc(total_box.rows * sizeof(int));
 	int* tmph = (int*)malloc(total_box.rows * sizeof(int));
+	printf("%d \n", total_box.rows);
 
 	if (numbox > 0) {
 		pack = nms(&total_box, 0.7, "Union", &pack_len);
@@ -96,6 +97,7 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 
 		pad(&total_box, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
 
+		free(pack);
 	}
 
 	numbox = total_box.rows;
@@ -113,7 +115,7 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 				Mat tmp_tempimg = imresample_double(&tmp, 24, 24);
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
-				return -1;
+				return tmp;
 			}
 		}
 
@@ -135,27 +137,13 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
-
-		/*save_diff_file(&mv);
-		print_Mat(&mv);
-*/
-		/*int x = 0;
-		for (x = 0; x < ipass_len; x++) {
-			printf("%d ", ipass[x]);
+		if (total_box.rows > 0) {
+			pack = nms(&total_box, 0.7, "Union", &pack_len);
+			total_box = get_total_boxes_pick(&total_box, pack, pack_len);
+			mv = transpose_mv_piack(&mv, pack, pack_len);
+			bbreg(&total_box, &mv);
+			rerec(&total_box);
 		}
-		printf("\n");
-*/
-
-		free(ipass);
-		free(score);
-
-
-
-
-
-	}
-
-
 
 		free(dy);
 		free(edy);
@@ -168,6 +156,86 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 		free(tmpw);
 		free(tmph);
 		free(pack);
+		free(ipass);
+		free(score);
+	}
+
+	numbox = total_box.rows;
+	if (numbox > 0) {
+		dy = (int*)malloc(total_box.rows * sizeof(int));
+		edy = (int*)malloc(total_box.rows * sizeof(int));
+		dx = (int*)malloc(total_box.rows * sizeof(int));
+		edx = (int*)malloc(total_box.rows * sizeof(int));
+		y = (int*)malloc(total_box.rows * sizeof(int));
+		ey = (int*)malloc(total_box.rows * sizeof(int));
+		x = (int*)malloc(total_box.rows * sizeof(int));
+		ex = (int*)malloc(total_box.rows * sizeof(int));
+		tmpw = (int*)malloc(total_box.rows * sizeof(int));
+		tmph = (int*)malloc(total_box.rows * sizeof(int));
+
+		total_box = fix_total_boxes(&total_box);
+		pad(&total_box, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
+		Mat_init_size[0] = 3;
+		Mat_init_size[1] = 48;
+		Mat_init_size[2] = 48;
+		Mat tempimg = Mat(3, Mat_init_size, CV_64FC(numbox), Scalar::all(0));
+
+
+		for (i = 0; i < numbox; i++) {
+			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_64FC3);
+
+			buckle_map(img, &tmp, x, ex, y, ey, dx, edx, dy, edy, i);
+			if (((tmp.rows > 0) && (tmp.cols > 0)) || ((tmp.rows == 0) && (tmp.cols == 0))) {
+				Mat tmp_tempimg = imresample_double(&tmp, 48, 48);
+				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
+			} else {
+				return tmp;
+			}
+		}
+
+		image_normalization_double(&tempimg, Mat_init_size[2]);
+		Mat tempimg1 = transpose3021(&tempimg, Mat_init_size[2]);
+
+		int onet_init_arr[3][2] = {{6, 4}, {6, 10}, {6, 2}};
+		Mat out0 = get_onet_out(onet_init_arr[0], "oout0.bin");
+		Mat out1 = get_onet_out(onet_init_arr[1], "oout1.bin");
+		Mat out2 = get_onet_out(onet_init_arr[2], "oout2.bin");
+
+		transpose(out0, out0);
+		transpose(out1, out1);
+		transpose(out2, out2);
+
+		int len = out0.cols;
+		float* score = get_score_out(&out2, 1, len);
+		int ipass_len = 0;
+		int* ipass = get_ipass(score, threshold[2], len, &ipass_len);
+		Mat points = get_points(&out1, ipass, ipass_len);
+
+		total_box = get_hstack_rnet(&total_box, ipass, 0, 4, score, ipass_len);
+
+		Mat mv = get_mv(&out0, ipass, ipass_len);
+
+		double* w = (double*)malloc(len * sizeof(double));
+		double* h = (double*)malloc(len * sizeof(double));
+		get_wh_bbreg(&total_box, w, h, len);
+
+		updata_points(&points, &total_box, w, h, len);
+
+		if (total_box.rows > 0) {
+			transpose(mv, mv);
+			bbreg(&total_box, &mv);
+			pack = nms(&total_box, 0.7, "Min", &pack_len);
+			total_box = get_boxes_from_pack(&total_box, pack, pack_len);
+
+			*pointss = points_pick(&points, pack, pack_len);
+		}
+
+		free(w);
+		free(h);
+		free(score);
+		free(ipass);
+	}
+		free(pack);
 		free(regw);
 		free(regh);
 		free(qq1);
@@ -175,5 +243,5 @@ int detect_face(Mat* img, float* threshold, double* scales, int scales_len)
 		free(qq3);
 		free(qq4);
 
-	return 0;
+	return total_box;
 }

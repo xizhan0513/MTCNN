@@ -130,6 +130,9 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         tempimg = (tempimg-127.5)*0.0078125
         tempimg1 = np.transpose(tempimg, (3,0,2,1))
         out = onet(tempimg1)
+        save_diff_file(out[0], "oout0.bin")
+        save_diff_file(out[1], "oout1.bin")
+        save_diff_file(out[2], "oout2.bin")
         out0 = np.transpose(out[0])
         out1 = np.transpose(out[1])
         out2 = np.transpose(out[2])

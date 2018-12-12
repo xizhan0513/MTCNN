@@ -3,7 +3,7 @@
 #include "mtcnn.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
+#include <opencv2/opencv.hpp>
 using namespace std;
 using namespace cv;
 
@@ -279,6 +279,27 @@ Mat get_rnet_out(int* pnet_init_arr, const char* str, int flag)
 
     FILE* f = fopen(str, "rb");
     Mat ret_img = Mat::zeros(pnet_init_arr[0], flag == 0 ? pnet_init_arr[1] : (pnet_init_arr[1] - 2), CV_32FC1);
+
+    for (i = 0; i < ret_img.rows; i++) {
+        for (j = 0; j < ret_img.cols; j++) {
+            ptr_float = ret_img.ptr<float>(i, j);
+            for (k = 0; k < ret_img.channels(); k++) {
+                fread(ptr_float, 4, 1, f);
+                ptr_float++;
+            }
+        }
+    }
+
+    return ret_img;
+}
+
+Mat get_onet_out(int* pnet_init_arr, const char* str)
+{
+    int i = 0, j = 0, k = 0, l = 0;
+    float* ptr_float = NULL;
+
+    FILE* f = fopen(str, "rb");
+    Mat ret_img = Mat::zeros(pnet_init_arr[0], pnet_init_arr[1], CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
@@ -786,7 +807,14 @@ short* nms(Mat* img, float threshold, const char* str, int* pack_len)
 
         double* inter = get_inter(w, h, len);
 
-        double* o = get_o(inter, area, i, idx, len);
+        double* o = NULL;
+		if (!strcmp(str, "Min")) {
+			double* tmp = minimum(area, area[i], idx, len);
+			o = get_o_Min(inter, tmp, len);
+			free(tmp);
+		}else {
+			o = get_o(inter, area, i, idx, len);
+		}
 		updata_I(&I, o, threshold, &len);
 
 		free(o);
@@ -1240,5 +1268,195 @@ Mat get_mv(Mat* img, int* ipass, int ipass_len)
 	return ret_img;
 }
 
+Mat get_total_boxes_pick(Mat* img, short* pack, int len)
+{
+	int i = 0, j = 0;
+	Mat ret_img = Mat::zeros(len, img->cols, CV_64FC1);
+
+	for (i = 0; i < len; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(pack[i], j));
+		}
+	}
+
+	return ret_img;
+}
+
+Mat transpose_mv_piack(Mat* img, short* pack, int len)
+{
+	int i = 0, j = 0;
+	Mat ret_img = Mat::zeros(img->rows, len, CV_32FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < len; j++) {
+			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(i, pack[j]));
+		}
+	}
+
+	transpose(ret_img, ret_img);
+	return ret_img;
+}
+
+void get_wh_bbreg(Mat* img, double* w, double* h, int len)
+{
+	int i = 0;
+	for (i = 0; i < len; i++) {
+		w[i] = *(img->ptr<double>(i, 2)) - *(img->ptr<double>(i, 0)) + 1;
+		h[i] = *(img->ptr<double>(i, 3)) - *(img->ptr<double>(i, 1)) + 1;
+	}
+
+	return ;
+}
+
+void get_b_bbreg(Mat* img, Mat* mv, double* b1, double* b2, double* b3, double* b4, double* w, double* h, int len)
+{
+	int i = 0;
+	for (i = 0; i < len; i++) {
+		b1[i] = *(img->ptr<double>(i, 0)) + *(mv->ptr<float>(i, 0)) * w[i];
+		b2[i] = *(img->ptr<double>(i, 1)) + *(mv->ptr<float>(i, 1)) * h[i];
+		b3[i] = *(img->ptr<double>(i, 2)) + *(mv->ptr<float>(i, 2)) * w[i];
+		b4[i] = *(img->ptr<double>(i, 3)) + *(mv->ptr<float>(i, 3)) * h[i];
+	}
+
+	return ;
+}
+
+void get_bbreg_return(Mat* img, double* b1, double* b2, double* b3, double* b4, int len)
+{
+	int i = 0, j = 0;
+	Mat tmp = Mat::zeros(4, len, CV_64FC1);
+	for (i = 0; i < tmp.cols; i++) {
+		*(tmp.ptr<double>(0, i)) = b1[i];
+		*(tmp.ptr<double>(1, i)) = b2[i];
+		*(tmp.ptr<double>(2, i)) = b3[i];
+		*(tmp.ptr<double>(3, i)) = b4[i];
+	}
+
+	transpose(tmp, tmp);
+
+	for (i = 0; i < tmp.rows; i++) {
+		for (j = 0; j < 4; j++) {
+			*(img->ptr<double>(i, j)) = *(tmp.ptr<double>(i, j));
+		}
+	}
+
+	return ;
+}
+
+void bbreg(Mat* img, Mat* mv)
+{
+	if (mv->cols == 1) {
+		/* reg = np.reshape(reg, (reg.shape[2], reg.shape[3])) */
+	}
+
+	int len = mv->rows;
+
+	double* w = (double*)malloc(len * sizeof(double));
+	double* h = (double*)malloc(len * sizeof(double));
+	double* b1 = (double*)malloc(len * sizeof(double));
+	double* b2 = (double*)malloc(len * sizeof(double));
+	double* b3 = (double*)malloc(len * sizeof(double));
+	double* b4 = (double*)malloc(len * sizeof(double));
+	get_wh_bbreg(img, w, h, len);
+	get_b_bbreg(img, mv, b1, b2, b3, b4, w, h, len);
+
+	get_bbreg_return(img, b1, b2, b3, b4, len);
+
+	free(w);
+	free(h);
+	free(b1);
+	free(b2);
+	free(b3);
+	free(b4);
+	return ;
+}
+
+Mat fix_total_boxes(Mat* img)
+{
+	int i = 0, j = 0;
+	//Mat ret_img = Mat::zeros(img->rows, img->cols, CV_32SC1);
+	Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC1);
+	for (i = 0; i < img->rows; i++) {
+		for (j = 0; j < img->cols; j++) {
+			//*(ret_img.ptr<int>(i, j)) = floor(*(img->ptr<double>(i, j)));
+			*(ret_img.ptr<double>(i, j)) = floor(*(img->ptr<double>(i, j)));
+		}
+	}
+
+	return ret_img;
+}
+
+Mat get_points(Mat* img, int* ipass, int len)
+{
+	int i = 0, j = 0;
+	Mat ret_img = Mat::zeros(img->rows, len, CV_32FC1);
+
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(i, ipass[j]));
+		}
+	}
+
+	return ret_img;
+}
+
+void updata_points(Mat* img, Mat* total_box, double* w, double* h, int len)
+{
+	int i = 0, j = 0;
+
+	for (i = 0; i < 5; i++) {
+		for (j = 0; j < len; j++) {
+			*(img->ptr<float>(i, j)) = (w[j] * *(img->ptr<float>(i, j))) + (*(total_box->ptr<double>(j, 0)) - 1);
+			*(img->ptr<float>(i + 5, j)) = (h[j] * *(img->ptr<float>(i + 5, j))) + (*(total_box->ptr<double>(j, 1)) - 1);
+		}
+	}
+
+	return ;
+}
+
+double* get_o_Min(double* inter, double* tmp, int len)
+{
+	int i = 0;
+	double* ret_ptr = (double*)malloc(len * sizeof(double));
+
+	for (i = 0; i < len; i++) {
+		ret_ptr[i] = inter[i] / tmp[i];
+	}
+
+	return ret_ptr;
+}
+
+Mat  points_pick(Mat* img, short* pick, int pick_len)
+{
+	int i = 0, j = 0;
+	Mat ret_img = Mat::zeros(img->rows, pick_len, CV_32FC1);
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*(ret_img.ptr<float>(i, j))= *(img->ptr<float>(i, pick[j]));
+		}
+	}
+
+	return ret_img;
+}
+
+Mat face_preprocess(Mat* img, Mat* landmark)
+{
+	int img_size[2] = {112, 112};
+	float src_arr[5][2] = {{38.2946, 51.6963}, {73.5318, 51.5014}, {56.0252, 71.7366}, {41.5493, 92.3655}, {70.7299, 92.2041}};
+	Mat src = Mat::zeros(5, 2, CV_32FC1);
+	int i = 0, j = 0;
+	for (i = 0; i < 5; i++) {
+		for (j = 0; j < 2; j++) {
+			*(src.ptr<float>(i, j)) = src_arr[i][j];
+		}
+	}
+	Mat M = estimateRigidTransform(*landmark, src, false);
+	print_Mat(&M);
+
+	Mat ret_img;
+	warpAffine(*img, ret_img, M, Size(img_size[0], img_size[1]), 1, 0);
+
+	return ret_img;
+}
 
 
