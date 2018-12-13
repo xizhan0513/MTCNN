@@ -1,30 +1,36 @@
 #ifndef __MTCNN_H__
 #define __MTCNN_H__
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <stdio.h>
+#include <math.h>
+#include <unistd.h>
+#include <opencv2/opencv.hpp>	/* 包含所有opencv模块，影响编译速度，不影响运行速度的 */
+#include "align.h"
 
 using namespace std;
 using namespace cv;
 
+#define SCALES_LEN 16
+
 Mat detect_face(Mat*, float*, double*, int, Mat*);
 
-Mat imresample_uchar(Mat*, int, int);
+Mat imresample(Mat*, int, int, unsigned char);
 
-Mat imresample_double(Mat*, int, int);
+Mat imresample(Mat*, int, int, double);
 
-Mat transpose_uchar_201(Mat*);
+Mat transpose_201(Mat*, unsigned char);
 
-Mat transpose_double_201(Mat*);
+Mat transpose_201(Mat*, double);
 
-Mat  image_normalization_uchar(Mat*);
+Mat transpose_021(Mat*, float);
 
-void  image_normalization_double(Mat*, int);
+Mat transpose_021(Mat*, double);
+
+Mat image_normalization(Mat*, unsigned char type);
+
+void image_normalization(Mat*, int, double type);
 
 Mat get_img_y(Mat*);
-
-Mat transpose_double_021(Mat);
 
 Mat expand_dims(Mat*);
 
@@ -70,21 +76,41 @@ int* get_I(double*, int);
 
 int* get_idx(int*, int);
 
-void print_Mat(Mat*);
+void print_1D(short*, int);
 
-void print_Mat_uchar(Mat*);
+void print_1D(int*, int);
 
-void print_Mat_double(Mat*);
+void print_1D(float*, int);
 
-void print_Mat_3DMat(Mat*, int);
+void print_1D(double*, int);
 
-void save_diff_file_uchar(Mat*);
+void print_2D(Mat*, float);
 
-void save_diff_file_double(Mat*);
+void print_2D(Mat*, double);
 
-void save_diff_file_3DMat(Mat*, int);
+void print_3D(Mat*, unsigned char);
 
-void save_diff_file(Mat*);
+void print_3D(Mat*, float);
+
+void print_3D(Mat*, double);
+
+void print_4D(Mat*, int, float);
+
+void print_4D(Mat*, int, double);
+
+void save_diff_file_2D(Mat*, float);
+
+void save_diff_file_2D(Mat*, double);
+
+void save_diff_file_3D(Mat*, unsigned char);
+
+void save_diff_file_3D(Mat*, float);
+
+void save_diff_file_3D(Mat*, double);
+
+void save_diff_file_4D(Mat*, int, float);
+
+void save_diff_file_4D(Mat*, int, double);
 
 double* maximum(double*, double, int*, int);
 
@@ -102,9 +128,9 @@ void updata_I(int**, double*, float, int*);
 
 short* get_pick(short*, int);
 
-Mat get_boxes_from_pack(Mat*, short*, int);
+Mat get_boxes_from_pick(Mat*, short*, int);
 
-Mat get_total_box(Mat*, Mat*);
+Mat get_total_boxes(Mat*, Mat*);
 
 double* get_reg_wh(Mat*, int, int);
 
@@ -120,7 +146,7 @@ Mat tile(double*, int, int, int);
 
 void get_ret_rerec(Mat*, int, int, int, int, Mat*);
 
-void get_total_boxes_fix(Mat*, int, int, int, int);
+void get_total_boxeses_fix(Mat*, int, int, int, int);
 
 void pad(Mat*, int, int, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 
@@ -144,7 +170,7 @@ int* get_ipass(float*, float, int, int*);
 
 Mat get_mv(Mat*, int*, int);
 
-Mat get_total_boxes_pick(Mat*, short*, int len);
+Mat get_total_boxeses_pick(Mat*, short*, int len);
 
 Mat transpose_mv_piack(Mat*, short*, int);
 
@@ -154,7 +180,7 @@ void get_wh_bbreg(Mat*, Mat*, double*, double*, double*, double*, double*, doubl
 
 void get_wh_bbreg(Mat*, double*, double*, int);
 
-Mat fix_total_boxes(Mat*);
+Mat fix_total_boxeses(Mat*);
 
 Mat get_points(Mat*, int*, int);
 

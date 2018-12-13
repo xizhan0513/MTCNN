@@ -1,27 +1,23 @@
-#include <stdio.h>
-#include <math.h>
 #include "mtcnn.h"
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/opencv.hpp>
+
 using namespace std;
 using namespace cv;
 
-Mat image_normalization_uchar(Mat* img)
+Mat image_normalization(Mat* img, unsigned char type)
 {
     int i = 0, j = 0, k = 0;
-    unsigned char* ptr_uchar = NULL;
-    double* ptr_double = NULL;
+    unsigned char* ptr_src = NULL;
+    double* ptr_dst = NULL;
     Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC(img->channels()));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
-            ptr_uchar = img->ptr<uchar>(i, j);
-            ptr_double = ret_img.ptr<double>(i ,j);
+            ptr_src = img->ptr<uchar>(i, j);
+            ptr_dst = ret_img.ptr<double>(i ,j);
             for (k = 0; k < ret_img.channels(); k++) {
-                *ptr_double = (*ptr_uchar-127.5) * 0.0078125;
-                ptr_uchar++;
-                ptr_double++;
+                *ptr_dst = (*ptr_src-127.5) * 0.0078125;
+                ptr_src++;
+                ptr_dst++;
             }
         }
     }
@@ -29,7 +25,7 @@ Mat image_normalization_uchar(Mat* img)
     return ret_img;
 }
 
-void image_normalization_double(Mat* img, int len)
+void image_normalization(Mat* img, int len, double type)
 {
     int i = 0, j = 0, k = 0, v = 0;
     double* ptr = NULL;
@@ -39,7 +35,7 @@ void image_normalization_double(Mat* img, int len)
             for (k = 0; k < len; k++) {
 				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
 				for (v = 0; v < img->channels(); v++) {
-                *ptr = (*ptr-127.5) * 0.0078125;
+                *ptr = (*ptr - 127.5) * 0.0078125;
                 ptr++;
 				}
             }
@@ -49,65 +45,37 @@ void image_normalization_double(Mat* img, int len)
     return ;
 }
 
-Mat transpose_uchar_201(Mat* img)
+Mat transpose_201(Mat* img, unsigned char type)
 {
     int i = 0, j = 0, k = 0;
-    int x = 0, y = 0, z = 0;
-    int xe = 0, ye = 0;
     unsigned char* ptr = NULL;
     Mat ret_img = Mat::zeros(img->channels(), img->rows, CV_8UC(img->cols));
-
-    xe = img->rows;
-    ye = img->cols;
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
             ptr = ret_img.ptr<uchar>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
-                *ptr = *((img->data + img->step[0]*x + img->step[1]*y) + z);
+				*ptr = *(img->ptr<uchar>(j, k) + i);
                 ptr++;
-                y++;
-                if (y == ye) {
-                    y = 0;
-                    x++;
-                    if (x == xe) {
-                        z++;
-                        x = 0;
-                    }
-                }
             }
         }
     }
 
-    return image_normalization_uchar(&ret_img);
+    return image_normalization(&ret_img, type);
 }
 
-Mat transpose_double_201(Mat* img)
+Mat transpose_201(Mat* img, double type)
 {
     int i = 0, j = 0, k = 0;
-    int x = 0, y = 0, z = 0;
-    int xe = 0, ye = 0;
     double* ptr = NULL;
     Mat ret_img = Mat::zeros(img->channels(), img->rows, CV_64FC(img->cols));
-
-    xe = img->rows;
-    ye = img->cols;
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
             ptr = ret_img.ptr<double>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
-                *ptr = *((double*)(img->data + img->step[0]*x + img->step[1]*y) + z);
+				*ptr = *(img->ptr<double>(j, k) + i);
                 ptr++;
-                y++;
-                if (y == ye) {
-                    y = 0;
-                    x++;
-                    if (x == xe) {
-                        z++;
-                        x = 0;
-                    }
-                }
             }
         }
     }
@@ -115,33 +83,18 @@ Mat transpose_double_201(Mat* img)
     return ret_img;
 }
 
-
-Mat transpose_double_021(Mat* img)
+Mat transpose_021(Mat* img, float type)
 {
     int i = 0, j = 0, k = 0;
-    int x = 0, y = 0, z = 0;
-    int ye = 0, ze = 0;
-    double* ptr_double = NULL;
+    float* ptr = NULL;
     Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_64FC(img->cols));
 
-    ye = img->cols;
-    ze = img->channels();
-
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
-            ptr_double = ret_img.ptr<double>(i, j);
+            ptr = ret_img.ptr<float>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
-                *ptr_double = *((double*)(img->data + img->step[0]*x + img->step[1]*y) + z);
-                ptr_double++;
-                y++;
-                if (y == ye) {
-                    y = 0;
-                    z++;
-                    if (z == ze) {
-                        x++;
-                        z = 0;
-                    }
-                }
+                *ptr = *(img->ptr<float>(i, k) + j);
+				ptr++;
             }
         }
     }
@@ -149,32 +102,18 @@ Mat transpose_double_021(Mat* img)
     return ret_img;
 }
 
-Mat transpose_float_021(Mat* img)
+Mat transpose_021(Mat* img, double type)
 {
     int i = 0, j = 0, k = 0;
-    int x = 0, y = 0, z = 0;
-    int ye = 0, ze = 0;
-    float* ptr_float = NULL;
-    Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_32FC(img->cols));
-
-    ye = img->cols;
-    ze = img->channels();
+    double* ptr = NULL;
+    Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_64FC(img->cols));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
-            ptr_float = ret_img.ptr<float>(i, j);
+            ptr = ret_img.ptr<double>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
-                *ptr_float = *((float*)(img->data + img->step[0]*x + img->step[1]*y) + z);
-                ptr_float++;
-                y++;
-                if (y == ye) {
-                    y = 0;
-                    z++;
-                    if (z == ze) {
-                        x++;
-                        z = 0;
-                    }
-                }
+                *ptr = *(img->ptr<double>(i, k) + j);
+				ptr++;
             }
         }
     }
@@ -185,8 +124,8 @@ Mat transpose_float_021(Mat* img)
 Mat expand_dims(Mat* img)
 {
     int i = 0, j = 0, k = 0, v = 0;
-    double* ptr_double_src = NULL;
-    double* ptr_double_dst = NULL;
+    double* ptr_src = NULL;
+    double* ptr_dst = NULL;
     int Mat_init_size[3] = {0};
     Mat_init_size[0] = 1;
     Mat_init_size[1] = img->rows;
@@ -194,15 +133,15 @@ Mat expand_dims(Mat* img)
 
     Mat ret_img = Mat(3, Mat_init_size, CV_64FC(img->channels()), Scalar::all(0));
 
-    for (i = 0; i < 1; i++) {
-        for (j = 0; j < img->rows; j++) {
-            for (k = 0; k < img->cols; k++) {
-                ptr_double_src = img->ptr<double>(j, k);
-                ptr_double_dst = (double*)(ret_img.data + ret_img.step[0]*i + ret_img.step[1]*j + ret_img.step[2]*k);
-                for (v = 0; v < img->channels(); v++) {
-                    *ptr_double_dst = *ptr_double_src;
-                    ptr_double_src++;
-                    ptr_double_dst++;
+    for (i = 0; i < ret_img.size().height; i++) {
+        for (j = 0; j < ret_img.size().width; j++) {
+            for (k = 0; k < Mat_init_size[2]; k++) {
+                ptr_src = img->ptr<double>(j, k);
+                ptr_dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
+                for (v = 0; v < ret_img.channels(); v++) {
+                    *ptr_dst = *ptr_src;
+                    ptr_src++;
+                    ptr_dst++;
                 }
             }
         }
@@ -231,33 +170,33 @@ Mat get_float_2D(Mat* img, int count)
     return ret_img;
 }
 
-Mat imresample_uchar(Mat* img, int hs, int ws)
+Mat imresample(Mat* img, int hs, int ws, unsigned char type)
 {
     Mat tmp_img;
     resize(*img, tmp_img, Size(ws, hs), 0, 0, INTER_AREA);
-    return transpose_uchar_201(&tmp_img);
+    return transpose_201(&tmp_img, type);
 }
 
-Mat imresample_double(Mat* img, int hs, int ws)
+Mat imresample(Mat* img, int hs, int ws, double type)
 {
     Mat tmp_img;
     resize(*img, tmp_img, Size(ws, hs), 0, 0, INTER_AREA);
-	return transpose_double_201(&tmp_img);
+	return transpose_201(&tmp_img, type);
 }
 
 Mat get_img_y(Mat* img)
 {
-    Mat img_x = transpose_double_021(img);
+    Mat img_x = transpose_021(img, (double)1);
     return expand_dims(&img_x);
 }
 
-Mat get_pnet_out(int* pnet_init_arr, const char* str, int flag)
+Mat get_pnet_out(int* pnet_out_shape, const char* str, int flag)
 {
     int i = 0, j = 0, k = 0, l = 0;
     float* ptr_float = NULL;
 
     FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(flag == 0 ? pnet_init_arr[1] : (pnet_init_arr[1] - 2), pnet_init_arr[2], CV_32FC(pnet_init_arr[3]));
+    Mat ret_img = Mat::zeros(flag == 0 ? pnet_out_shape[1] : (pnet_out_shape[1] - 2), pnet_out_shape[2], CV_32FC(pnet_out_shape[3]));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
@@ -272,13 +211,13 @@ Mat get_pnet_out(int* pnet_init_arr, const char* str, int flag)
     return ret_img;
 }
 
-Mat get_rnet_out(int* pnet_init_arr, const char* str, int flag)
+Mat get_rnet_out(int* pnet_out_shape, const char* str, int flag)
 {
     int i = 0, j = 0, k = 0, l = 0;
     float* ptr_float = NULL;
 
     FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(pnet_init_arr[0], flag == 0 ? pnet_init_arr[1] : (pnet_init_arr[1] - 2), CV_32FC1);
+    Mat ret_img = Mat::zeros(pnet_out_shape[0], flag == 0 ? pnet_out_shape[1] : (pnet_out_shape[1] - 2), CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
@@ -293,13 +232,13 @@ Mat get_rnet_out(int* pnet_init_arr, const char* str, int flag)
     return ret_img;
 }
 
-Mat get_onet_out(int* pnet_init_arr, const char* str)
+Mat get_onet_out(int* pnet_out_shape, const char* str)
 {
     int i = 0, j = 0, k = 0, l = 0;
     float* ptr_float = NULL;
 
     FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(pnet_init_arr[0], pnet_init_arr[1], CV_32FC1);
+    Mat ret_img = Mat::zeros(pnet_out_shape[0], pnet_out_shape[1], CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
@@ -316,12 +255,12 @@ Mat get_onet_out(int* pnet_init_arr, const char* str)
 
 Mat get_in0(Mat* img)
 {
-    return transpose_float_021(img);
+    return transpose_021(img, (float)1);
 }
 
 Mat get_in1(Mat* img)
 {
-    Mat tmp_img = transpose_float_021(img);
+    Mat tmp_img = transpose_021(img, (float)1);
     return get_float_2D(&tmp_img, 1);
 }
 
@@ -391,6 +330,7 @@ Mat get_vstack(Mat* dx1, Mat* dy1, Mat* dx2, Mat* dy2, int* y, int* x, int xy_le
     int i = 0;
     Mat ret_img = Mat::zeros(4, xy_len, CV_32FC1);
 
+	printf("vstack = %d\n", xy_len);
     for (i = 0; i < xy_len; i++) {
         *(ret_img.ptr<float>(0, i)) = *(dx1->ptr<float>(y[i], x[i]));
     }
@@ -776,7 +716,7 @@ short* get_pick(short* pick, int counter)
 	return ret_ptr;
 }
 
-short* nms(Mat* img, float threshold, const char* str, int* pack_len)
+short* nms(Mat* img, float threshold, const char* str, int* pick_len)
 {
     if (img->cols * img->rows == 0) {
         return NULL;
@@ -827,7 +767,7 @@ short* nms(Mat* img, float threshold, const char* str, int* pack_len)
         free(xx1);
         free(idx);
     }
-	*pack_len = counter;
+	*pick_len = counter;
 
     free(I);
     free(area);
@@ -839,16 +779,16 @@ short* nms(Mat* img, float threshold, const char* str, int* pack_len)
     return get_pick(pick, counter);
 }
 
-Mat get_boxes_from_pack(Mat* img, short* pack, int pack_len)
+Mat get_boxes_from_pick(Mat* img, short* pick, int pick_len)
 {
 	int i = 0, j = 0;
 	double* ptr_double_src = NULL;
 	double* ptr_double_dst = NULL;
 
-	Mat ret_img = Mat::zeros(pack_len, img->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros(pick_len, img->cols, CV_64FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
-		ptr_double_src = img->ptr<double>(pack[i]);
+		ptr_double_src = img->ptr<double>(pick[i]);
 		ptr_double_dst = ret_img.ptr<double>(i);
 		for (j = 0; j < ret_img.cols; j++) {
 			*ptr_double_dst = *ptr_double_src;
@@ -860,19 +800,19 @@ Mat get_boxes_from_pack(Mat* img, short* pack, int pack_len)
 	return ret_img;
 }
 
-Mat get_total_box(Mat* total_box, Mat* boxes2)
+Mat get_total_boxes(Mat* total_boxes, Mat* boxes2)
 {
 	int i = 0, j = 0;
 	double* ptr_src = NULL;
 	double* ptr_dst = NULL;
 
-	Mat ret_img = Mat::zeros((total_box->rows + boxes2->rows), boxes2->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros((total_boxes->rows + boxes2->rows), boxes2->cols, CV_64FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
-		if (i < total_box->rows) {
-			ptr_src = total_box->ptr<double>(i);
+		if (i < total_boxes->rows) {
+			ptr_src = total_boxes->ptr<double>(i);
 		} else {
-			ptr_src = boxes2->ptr<double>(i - total_box->rows);
+			ptr_src = boxes2->ptr<double>(i - total_boxes->rows);
 		}
 		ptr_dst = ret_img.ptr<double>(i);
 		for (j = 0; j < ret_img.cols; j++) {
@@ -909,11 +849,11 @@ double* get_qq(Mat* img, int x, int y, double* reg)
 	return ret_ptr;
 }
 
-Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* qq4, Mat* total_box, int index)
+Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* qq4, Mat* total_boxes, int index)
 {
 	int i = 0, j = 0;
 	double* ptr_double = NULL;
-	Mat ret_img = Mat::zeros(total_box->rows, 5, CV_64FC1);
+	Mat ret_img = Mat::zeros(total_boxes->rows, 5, CV_64FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
 		*(ret_img.ptr<double>(i, 0))= qq1[i];
@@ -928,7 +868,7 @@ Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* q
 		*(ret_img.ptr<double>(i, 3))= qq4[i];
 	}
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 4))= *(total_box->ptr<double>(i, index));
+		*(ret_img.ptr<double>(i, 4))= *(total_boxes->ptr<double>(i, index));
 	}
 
 	return ret_img;
@@ -1008,7 +948,7 @@ void rerec(Mat* img)
 	return ;
 }
 
-void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
+void get_total_boxeses_fix(Mat* img, int xs, int xe, int ys, int ye)
 {
 	int i = 0, j = 0;
 	double* ptr_double_src = NULL;
@@ -1268,28 +1208,28 @@ Mat get_mv(Mat* img, int* ipass, int ipass_len)
 	return ret_img;
 }
 
-Mat get_total_boxes_pick(Mat* img, short* pack, int len)
+Mat get_total_boxeses_pick(Mat* img, short* pick, int len)
 {
 	int i = 0, j = 0;
 	Mat ret_img = Mat::zeros(len, img->cols, CV_64FC1);
 
 	for (i = 0; i < len; i++) {
 		for (j = 0; j < ret_img.cols; j++) {
-			*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(pack[i], j));
+			*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(pick[i], j));
 		}
 	}
 
 	return ret_img;
 }
 
-Mat transpose_mv_piack(Mat* img, short* pack, int len)
+Mat transpose_mv_piack(Mat* img, short* pick, int len)
 {
 	int i = 0, j = 0;
 	Mat ret_img = Mat::zeros(img->rows, len, CV_32FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
 		for (j = 0; j < len; j++) {
-			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(i, pack[j]));
+			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(i, pick[j]));
 		}
 	}
 
@@ -1371,7 +1311,7 @@ void bbreg(Mat* img, Mat* mv)
 	return ;
 }
 
-Mat fix_total_boxes(Mat* img)
+Mat fix_total_boxeses(Mat* img)
 {
 	int i = 0, j = 0;
 	//Mat ret_img = Mat::zeros(img->rows, img->cols, CV_32SC1);
@@ -1400,14 +1340,14 @@ Mat get_points(Mat* img, int* ipass, int len)
 	return ret_img;
 }
 
-void updata_points(Mat* img, Mat* total_box, double* w, double* h, int len)
+void updata_points(Mat* img, Mat* total_boxes, double* w, double* h, int len)
 {
 	int i = 0, j = 0;
 
 	for (i = 0; i < 5; i++) {
 		for (j = 0; j < len; j++) {
-			*(img->ptr<float>(i, j)) = (w[j] * *(img->ptr<float>(i, j))) + (*(total_box->ptr<double>(j, 0)) - 1);
-			*(img->ptr<float>(i + 5, j)) = (h[j] * *(img->ptr<float>(i + 5, j))) + (*(total_box->ptr<double>(j, 1)) - 1);
+			*(img->ptr<float>(i, j)) = (w[j] * *(img->ptr<float>(i, j))) + (*(total_boxes->ptr<double>(j, 0)) - 1);
+			*(img->ptr<float>(i + 5, j)) = (h[j] * *(img->ptr<float>(i + 5, j))) + (*(total_boxes->ptr<double>(j, 1)) - 1);
 		}
 	}
 
@@ -1441,22 +1381,36 @@ Mat  points_pick(Mat* img, short* pick, int pick_len)
 
 Mat face_preprocess(Mat* img, Mat* landmark)
 {
-	int img_size[2] = {112, 112};
+	int i = 0, j = 0;
+	float* ptr = NULL;
+	Mat ret_img;
+
+#if 0
 	float src_arr[5][2] = {{38.2946, 51.6963}, {73.5318, 51.5014}, {56.0252, 71.7366}, {41.5493, 92.3655}, {70.7299, 92.2041}};
 	Mat src = Mat::zeros(5, 2, CV_32FC1);
-	int i = 0, j = 0;
+
 	for (i = 0; i < 5; i++) {
+		ptr = src.ptr<float>(i);
 		for (j = 0; j < 2; j++) {
-			*(src.ptr<float>(i, j)) = src_arr[i][j];
+			*ptr = src_arr[i][j];
+			ptr++;
 		}
 	}
-	Mat M = estimateRigidTransform(*landmark, src, false);
-	print_Mat(&M);
 
-	Mat ret_img;
-	warpAffine(*img, ret_img, M, Size(img_size[0], img_size[1]), 1, 0);
+	Mat M = estimateRigidTransform(*landmark, src, false);
+	warpAffine(*img, ret_img, M, Size(112, 112), 1, 0);
+#endif
+
+#if 1
+	vector<Point2d> source_pts(5);
+
+	for (i = 0; i < 5; i++) {
+		ptr = landmark->ptr<float>(i);
+		source_pts[i] = Point2d(*ptr, *(ptr + 1));
+	}
+
+	int ret = Align(*img, ret_img, source_pts);
+#endif
 
 	return ret_img;
 }
-
-

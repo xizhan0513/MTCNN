@@ -33,32 +33,32 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         out = pnet(img_y)
 
         if j == 7:
-            save_diff_file(out[0], "0.0")
-            save_diff_file(out[1], "0.1")
+            save_diff_file(out[0], "pout0.0")
+            save_diff_file(out[1], "pout0.1")
         if j == 8:
-            save_diff_file(out[0], "1.0")
-            save_diff_file(out[1], "1.1")
+            save_diff_file(out[0], "pout1.0")
+            save_diff_file(out[1], "pout1.1")
         if j == 9:
-            save_diff_file(out[0], "2.0")
-            save_diff_file(out[1], "2.1")
+            save_diff_file(out[0], "pout2.0")
+            save_diff_file(out[1], "pout2.1")
         if j == 10:
-            save_diff_file(out[0], "3.0")
-            save_diff_file(out[1], "3.1")
+            save_diff_file(out[0], "pout3.0")
+            save_diff_file(out[1], "pout3.1")
         if j == 11:
-            save_diff_file(out[0], "4.0")
-            save_diff_file(out[1], "4.1")
+            save_diff_file(out[0], "pout4.0")
+            save_diff_file(out[1], "pout4.1")
         if j == 12:
-            save_diff_file(out[0], "5.0")
-            save_diff_file(out[1], "5.1")
+            save_diff_file(out[0], "pout5.0")
+            save_diff_file(out[1], "pout5.1")
         if j == 13:
-            save_diff_file(out[0], "6.0")
-            save_diff_file(out[1], "6.1")
+            save_diff_file(out[0], "pout6.0")
+            save_diff_file(out[1], "pout6.1")
         if j == 14:
-            save_diff_file(out[0], "7.0")
-            save_diff_file(out[1], "7.1")
+            save_diff_file(out[0], "pout7.0")
+            save_diff_file(out[1], "pout7.1")
         if j == 15:
-            save_diff_file(out[0], "8.0")
-            save_diff_file(out[1], "8.1")
+            save_diff_file(out[0], "pout8.0")
+            save_diff_file(out[1], "pout8.1")
 
         out0 = np.transpose(out[0], (0,1,3,2))
         out1 = np.transpose(out[1], (0,1,3,2))
