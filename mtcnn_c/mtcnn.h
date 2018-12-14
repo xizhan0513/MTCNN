@@ -44,15 +44,15 @@ Mat get_in0(Mat*);
 
 Mat get_in1(Mat*);
 
-Mat get_float_2D(Mat*, int);
+Mat from_3DMat_select_rows(Mat*, int);
 
 Mat generateBoundingBox(Mat*, Mat*, double, float);
 
 void get_xy(Mat*, int**, int**, float, int*);
 
-float* get_score(Mat*, int*, int*, int);
+Mat get_score_in_gBB(Mat*, int*, int*, int);
 
-Mat get_vstack_pnet(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
+Mat get_vstack_in_gBB(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
 
 Mat get_bb(int*, int*, int);
 
@@ -60,21 +60,13 @@ Mat get_q1(Mat*, int, double, int);
 
 Mat get_q2(Mat*, int, double, int, int);
 
-Mat get_dims_0_to_1(float*, int);
-
 Mat get_hstack_pnet(Mat*, Mat*, Mat*, Mat*, int);
 
 Mat get_hstack_rnet(Mat*, int*, int, int, float*, int);
 
 short* nms(Mat*, float, const char*, int*);
 
-void get_boxes(Mat*, double**, double**, double**, double**, double**);
-
-double* get_area(double*, double*, double*, double*, int);
-
-int* get_I(double*, int);
-
-int* get_idx(int*, int);
+int* get_idx(Mat*);
 
 void print_1D(short*, int);
 
@@ -83,6 +75,8 @@ void print_1D(int*, int);
 void print_1D(float*, int);
 
 void print_1D(double*, int);
+
+void print_2D(Mat*, int);
 
 void print_2D(Mat*, float);
 
@@ -112,11 +106,11 @@ void save_diff_file_4D(Mat*, int, float);
 
 void save_diff_file_4D(Mat*, int, double);
 
-double* maximum(double*, double, int*, int);
+double* maximum(Mat*, int, int*, int);
+
+double* minimum(Mat*, int, int*, int);
 
 double* minimum(double*, double, int*, int);
-
-void get_boxes(Mat*, double*, double*, double*, double*, double*);
 
 double* get_wh(double*, double*, double, int);
 
@@ -124,15 +118,17 @@ double* get_inter(double*, double*, int);
 
 double* get_o(double*, double*, int, int*, int);
 
-void updata_I(int**, double*, float, int*);
+Mat update_I(Mat*, double*, float);
 
-short* get_pick(short*, int);
+short* get_pick_in_nms(short*, int);
+
+double* get_area(Mat*, Mat*, Mat*, Mat*, int);
 
 Mat get_boxes_from_pick(Mat*, short*, int);
 
-Mat get_total_boxes(Mat*, Mat*);
+Mat append_total_boxes(Mat*, Mat*);
 
-double* get_reg_wh(Mat*, int, int);
+double* mat_cols_sub(Mat, Mat);
 
 double* get_qq(Mat*, int, int, double*);
 
@@ -146,7 +142,7 @@ Mat tile(double*, int, int, int);
 
 void get_ret_rerec(Mat*, int, int, int, int, Mat*);
 
-void get_total_boxeses_fix(Mat*, int, int, int, int);
+void get_total_boxes_fix(Mat*, int, int, int, int);
 
 void pad(Mat*, int, int, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 
@@ -184,7 +180,7 @@ Mat fix_total_boxeses(Mat*);
 
 Mat get_points(Mat*, int*, int);
 
-void updata_points(Mat*, Mat*, double*, double*, int);
+void update_points(Mat*, Mat*, double*, double*, int);
 
 double* get_o_Min(double*, double*, int);
 

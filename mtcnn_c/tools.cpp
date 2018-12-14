@@ -59,6 +59,25 @@ void print_1D(double* img, int len)
 	return ;
 }
 
+void print_2D(Mat* img, int type)
+{
+	int i = 0, j = 0;
+    int* ptr = NULL;
+
+	printf("rows = %d, cols = %d, channels = %d\n", img->rows, img->cols, img->channels());
+    for (i = 0; i < img->rows; i++) {
+        printf("[");
+		ptr = img->ptr<int>(i);
+        for (j = 0; j < img->cols; j++) {
+            printf("%d ", *ptr);
+			ptr++;
+        }
+		printf("]\n");
+    }
+
+    return ;
+}
+
 void print_2D(Mat* img, float type)
 {
 	int i = 0, j = 0;

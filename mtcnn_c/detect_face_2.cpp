@@ -9,6 +9,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	int h = img->rows;
 	int w = img->cols;
 	int hs = 0, ws = 0;
+	int len = 0;
 	double scale = 0;
 	short* pick = NULL;
 	int pick_len = 0;
@@ -24,6 +25,18 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	const char* rnet_out_file[2] = {"rout0.bin", "rout1.bin"};
 	const char* onet_out_file[3] = {"oout0.bin", "oout1.bin", "oout2.bin"};
 	int out_file_index = 0;
+
+	unsigned int numbox = 0;
+	int* dy = NULL;
+	int* edy = NULL;
+	int* dx = NULL;
+	int* edx = NULL;
+	int* y = NULL;
+	int* ey = NULL;
+	int* x = NULL;
+	int* ex = NULL;
+	int* tmpw = NULL;
+	int* tmph = NULL;
 
 	for (i = 7; i < scales_len; i++) {
 		scale = scales[i];
@@ -43,59 +56,67 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat in0 = get_in0(&out0);
 		Mat in1 = get_in1(&out1);
 
-		Mat boxes1 = generateBoundingBox(&in1, &in0, scale, threshold[0]);
+		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 
-		pick = nms(&boxes1, 0.5, "Union", &pick_len);
+		pick = nms(&boxes, 0.5, "Union", &pick_len);
 		if (pick == NULL) {
 			printf("nms failed\n");
-			return boxes1;
+			return boxes;
 		}
 
-		if ((boxes1.rows * boxes1.cols > 0) && (pick_len > 0)) {
-			Mat boxes2 = get_boxes_from_pick(&boxes1, pick, pick_len);
-			total_boxes = get_total_boxes(&total_boxes, &boxes2);
+		if ((boxes.rows * boxes.cols > 0) && (pick_len > 0)) {
+			Mat boxes1 = get_boxes_from_pick(&boxes, pick, pick_len);
+			total_boxes = append_total_boxes(&total_boxes, &boxes1);
 		}
 
 		free(pick);
 	}
 
-	unsigned int numbox = total_boxes.rows;
-	double* regw = NULL;
-	double* regh = NULL;
-	double* qq1 = NULL;
-	double* qq2 = NULL;
-	double* qq3 = NULL;
-	double* qq4 = NULL;
-	int* dy = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* edy = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* dx = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* edx = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* y = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* ey = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* x = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* ex = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* tmpw = (int*)malloc(total_boxes.rows * sizeof(int));
-	int* tmph = (int*)malloc(total_boxes.rows * sizeof(int));
+	numbox = total_boxes.rows;
 
 	if (numbox > 0) {
 		pick = nms(&total_boxes, 0.7, "Union", &pick_len);
 		total_boxes = get_boxes_from_pick(&total_boxes, pick, pick_len);
-		int len = total_boxes.rows;
-		regw = get_reg_wh(&total_boxes, 2, 0);
-		regh = get_reg_wh(&total_boxes, 3, 1);
-		qq1 = get_qq(&total_boxes, 0, 5, regw);
-		qq2 = get_qq(&total_boxes, 1, 6, regh);
-		qq3 = get_qq(&total_boxes, 2, 7, regw);
-		qq4 = get_qq(&total_boxes, 3, 8, regh);
+		len = total_boxes.rows;
+
+		double* regw = mat_cols_sub(total_boxes.colRange(2, 3), total_boxes.colRange(0, 1));
+		double* regh = mat_cols_sub(total_boxes.colRange(3, 4), total_boxes.colRange(1, 2));
+
+		double* qq1 = get_qq(&total_boxes, 0, 5, regw);
+		double* qq2 = get_qq(&total_boxes, 1, 6, regh);
+		double* qq3 = get_qq(&total_boxes, 2, 7, regw);
+		double* qq4 = get_qq(&total_boxes, 3, 8, regh);
 
 		total_boxes = get_vstack_qq_and_transpose(qq1, qq2, qq3, qq4, &total_boxes, 4);
 
 		rerec(&total_boxes);
 
-		get_total_boxeses_fix(&total_boxes, 0, 4, 0, 4);
+		get_total_boxes_fix(&total_boxes, 0, 4, 0, 4);
+
+		dy = (int*)malloc(total_boxes.rows * sizeof(int));
+		edy = (int*)malloc(total_boxes.rows * sizeof(int));
+		dx = (int*)malloc(total_boxes.rows * sizeof(int));
+		edx = (int*)malloc(total_boxes.rows * sizeof(int));
+		y = (int*)malloc(total_boxes.rows * sizeof(int));
+		ey = (int*)malloc(total_boxes.rows * sizeof(int));
+		x = (int*)malloc(total_boxes.rows * sizeof(int));
+		ex = (int*)malloc(total_boxes.rows * sizeof(int));
+		tmpw = (int*)malloc(total_boxes.rows * sizeof(int));
+		tmph = (int*)malloc(total_boxes.rows * sizeof(int));
+		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
+			printf("*********************************\n");
+			printf("****malloc error in line %d****\n", __LINE__);
+			printf("*********************************\n");
+		}
 
 		pad(&total_boxes, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
 
+		free(regw);
+		free(regh);
+		free(qq1);
+		free(qq2);
+		free(qq3);
+		free(qq4);
 		free(pick);
 	}
 
@@ -170,6 +191,11 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		ex = (int*)malloc(total_boxes.rows * sizeof(int));
 		tmpw = (int*)malloc(total_boxes.rows * sizeof(int));
 		tmph = (int*)malloc(total_boxes.rows * sizeof(int));
+		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
+			printf("*********************************\n");
+			printf("****malloc error in line %d****\n", __LINE__);
+			printf("*********************************\n");
+		}
 
 		total_boxes = fix_total_boxeses(&total_boxes);
 		pad(&total_boxes, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
@@ -214,9 +240,15 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		double* w = (double*)malloc(len * sizeof(double));
 		double* h = (double*)malloc(len * sizeof(double));
+		if (w == NULL || h == NULL) {
+			printf("*********************************\n");
+			printf("****malloc error in line %d****\n", __LINE__);
+			printf("*********************************\n");
+		}
+
 		get_wh_bbreg(&total_boxes, w, h, len);
 
-		updata_points(&points, &total_boxes, w, h, len);
+		update_points(&points, &total_boxes, w, h, len);
 
 		if (total_boxes.rows > 0) {
 			transpose(mv, mv);
@@ -232,13 +264,17 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		free(score);
 		free(ipass);
 	}
+		free(dy);
+		free(edy);
+		free(dx);
+		free(edx);
+		free(y);
+		free(ey);
+		free(x);
+		free(ex);
+		free(tmpw);
+		free(tmph);
 		free(pick);
-		free(regw);
-		free(regh);
-		free(qq1);
-		free(qq2);
-		free(qq3);
-		free(qq4);
 
 	return total_boxes;
 }

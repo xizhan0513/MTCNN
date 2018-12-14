@@ -42,9 +42,9 @@ int main(int argc, char* argv[])
 
 		Mat points;
 		Mat bounding_boxes = detect_face(&img, threshold, scales, scales_len, &points);
-		print_2D(&bounding_boxes, (double)1);
+		/*print_2D(&bounding_boxes, (double)1);
 		printf("----------------------------\n");
-		print_2D(&points, (float)1);
+		print_2D(&points, (float)1);*/
 		Mat _landmark = points.reshape(0, 2).t();
 
 		Mat warped = face_preprocess(&img, &_landmark);
