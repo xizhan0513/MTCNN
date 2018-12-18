@@ -13,6 +13,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	double scale = 0;
 	short* pick = NULL;
 	int pick_len = 0;
+	int ipass_len = 0;
 	Mat total_boxes;
 
 	int Mat_init_size[3] = {0};
@@ -93,16 +94,16 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		get_total_boxes_fix(&total_boxes, 0, 4, 0, 4);
 
-		dy = (int*)malloc(total_boxes.rows * sizeof(int));
-		edy = (int*)malloc(total_boxes.rows * sizeof(int));
-		dx = (int*)malloc(total_boxes.rows * sizeof(int));
-		edx = (int*)malloc(total_boxes.rows * sizeof(int));
-		y = (int*)malloc(total_boxes.rows * sizeof(int));
-		ey = (int*)malloc(total_boxes.rows * sizeof(int));
-		x = (int*)malloc(total_boxes.rows * sizeof(int));
-		ex = (int*)malloc(total_boxes.rows * sizeof(int));
-		tmpw = (int*)malloc(total_boxes.rows * sizeof(int));
-		tmph = (int*)malloc(total_boxes.rows * sizeof(int));
+		dy = (int*)malloc(len * sizeof(int));
+		edy = (int*)malloc(len * sizeof(int));
+		dx = (int*)malloc(len * sizeof(int));
+		edx = (int*)malloc(len * sizeof(int));
+		y = (int*)malloc(len * sizeof(int));
+		ey = (int*)malloc(len * sizeof(int));
+		x = (int*)malloc(len * sizeof(int));
+		ex = (int*)malloc(len * sizeof(int));
+		tmpw = (int*)malloc(len * sizeof(int));
+		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
 			printf("*********************************\n");
 			printf("****malloc error in line %d****\n", __LINE__);
@@ -135,6 +136,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 				Mat tmp_tempimg = imresample(&tmp, 24, 24, (double)1);
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
+				printf("buckle map execute failed!\n");
 				return tmp;
 			}
 		}
@@ -142,23 +144,25 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		image_normalization(&tempimg, Mat_init_size[2], (double)1);
 		Mat tempimg1 = transpose3021(&tempimg, Mat_init_size[2]);
 
+		/* out = rnet(tempimg1); */
+
 		Mat out0 = get_rnet_out(rnet_out_shape, rnet_out_file[0], 0);
 		Mat out1 = get_rnet_out(rnet_out_shape, rnet_out_file[1], 1);
 
 		transpose(out0, out0);
 		transpose(out1, out1);
-		int len = out0.cols;
-		float* score = get_score_out(&out1, 1, len);
-		int ipass_len = 0;
-		int* ipass = get_ipass(score, threshold[1], len, &ipass_len);
 
-		total_boxes = get_hstack_rnet(&total_boxes, ipass, 0, 4, score, ipass_len);
+		len = out0.cols;
+		Mat score = out1.rowRange(1, 2).clone();
+		int* ipass = get_ipass(&score, threshold[1], len, &ipass_len);
+
+		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);
 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
 		if (total_boxes.rows > 0) {
 			pick = nms(&total_boxes, 0.7, "Union", &pick_len);
-			total_boxes = get_total_boxeses_pick(&total_boxes, pick, pick_len);
+			total_boxes = get_total_boxes_pick(&total_boxes, pick, pick_len);
 			mv = transpose_mv_piack(&mv, pick, pick_len);
 			bbreg(&total_boxes, &mv);
 			rerec(&total_boxes);
@@ -176,34 +180,33 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		free(tmph);
 		free(pick);
 		free(ipass);
-		free(score);
 	}
 
 	numbox = total_boxes.rows;
 	if (numbox > 0) {
-		dy = (int*)malloc(total_boxes.rows * sizeof(int));
-		edy = (int*)malloc(total_boxes.rows * sizeof(int));
-		dx = (int*)malloc(total_boxes.rows * sizeof(int));
-		edx = (int*)malloc(total_boxes.rows * sizeof(int));
-		y = (int*)malloc(total_boxes.rows * sizeof(int));
-		ey = (int*)malloc(total_boxes.rows * sizeof(int));
-		x = (int*)malloc(total_boxes.rows * sizeof(int));
-		ex = (int*)malloc(total_boxes.rows * sizeof(int));
-		tmpw = (int*)malloc(total_boxes.rows * sizeof(int));
-		tmph = (int*)malloc(total_boxes.rows * sizeof(int));
+		len = total_boxes.rows;
+		dy = (int*)malloc(len * sizeof(int));
+		edy = (int*)malloc(len * sizeof(int));
+		dx = (int*)malloc(len * sizeof(int));
+		edx = (int*)malloc(len * sizeof(int));
+		y = (int*)malloc(len * sizeof(int));
+		ey = (int*)malloc(len * sizeof(int));
+		x = (int*)malloc(len * sizeof(int));
+		ex = (int*)malloc(len * sizeof(int));
+		tmpw = (int*)malloc(len * sizeof(int));
+		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
 			printf("*********************************\n");
 			printf("****malloc error in line %d****\n", __LINE__);
 			printf("*********************************\n");
 		}
 
-		total_boxes = fix_total_boxeses(&total_boxes);
+		total_boxes = fix_total_boxes(&total_boxes);
 		pad(&total_boxes, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
 		Mat_init_size[0] = 3;
 		Mat_init_size[1] = 48;
 		Mat_init_size[2] = 48;
 		Mat tempimg = Mat(3, Mat_init_size, CV_64FC(numbox), Scalar::all(0));
-
 
 		for (i = 0; i < numbox; i++) {
 			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_64FC3);
@@ -228,13 +231,12 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		transpose(out1, out1);
 		transpose(out2, out2);
 
-		int len = out0.cols;
-		float* score = get_score_out(&out2, 1, len);
-		int ipass_len = 0;
-		int* ipass = get_ipass(score, threshold[2], len, &ipass_len);
+		len = out0.cols;
+		Mat score = out2.rowRange(1, 2).clone();
+		int* ipass = get_ipass(&score, threshold[2], len, &ipass_len);
 		Mat points = get_points(&out1, ipass, ipass_len);
 
-		total_boxes = get_hstack_rnet(&total_boxes, ipass, 0, 4, score, ipass_len);
+		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);
 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
@@ -246,7 +248,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 			printf("*********************************\n");
 		}
 
-		get_wh_bbreg(&total_boxes, w, h, len);
+		get_wh_in_bbreg(&total_boxes, w, h, len);
 
 		update_points(&points, &total_boxes, w, h, len);
 
@@ -261,9 +263,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		free(w);
 		free(h);
-		free(score);
 		free(ipass);
-	}
 		free(dy);
 		free(edy);
 		free(dx);
@@ -275,6 +275,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		free(tmpw);
 		free(tmph);
 		free(pick);
+	}
 
 	return total_boxes;
 }

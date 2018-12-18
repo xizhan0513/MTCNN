@@ -1066,16 +1066,16 @@ void buckle_map(Mat* img, Mat* tmp, int* x, int* ex, int* y, int* ey, int* dx, i
 void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
 {
 	int i = 0, j = 0, v = 0, z = 0;
-	double* src = NULL;
-	double* dst = (double*)tempimg->data + k;
+	double* ptr_src = NULL;
+	double* ptr_dst = (double*)tempimg->data + k;
 
 	for (i = 0; i < tempimg->size().height; i++) {
 		for (j = 0; j < tempimg->size().width; j++) {
-			src = tmp_tempimg->ptr<double>(i, j);
+			ptr_src = tmp_tempimg->ptr<double>(i, j);
 			for (v = 0; v < len; v++) {
-				*dst = *src;
-				src++;
-				dst += tempimg->channels();
+				*ptr_dst = *ptr_src;
+				ptr_src++;
+				ptr_dst += tempimg->channels();
 			}
 		}
 	}
@@ -1086,8 +1086,7 @@ void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
 Mat transpose3021(Mat* img, int len)
 {
 	int i = 0, j = 0, k = 0, v = 0;
-	double* src = NULL;
-	double* dst = NULL;
+	double* ptr_dst = NULL;
 
 	int Mat_init_size[3] = {0};
 	Mat_init_size[0] = img->channels();
@@ -1098,10 +1097,10 @@ Mat transpose3021(Mat* img, int len)
 	for (i = 0; i < ret_img.size().height; i++) {
 		for (j = 0; j < ret_img.size().width; j++) {
 			for (k = 0; k < Mat_init_size[2]; k++) {
-				dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
+				ptr_dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
 				for (v = 0; v < ret_img.channels(); v++) {
-					*dst = *(((double*)(img->data + img->step[0] * j + img->step[1] * v + img->step[2] * k)) + i);
-					dst++;
+					*ptr_dst = *(((double*)(img->data + img->step[0] * j + img->step[1] * v + img->step[2] * k)) + i);
+					ptr_dst++;
 				}
 			}
 		}
@@ -1110,31 +1109,16 @@ Mat transpose3021(Mat* img, int len)
 	return ret_img;
 }
 
-float* get_score_out(Mat* img, int index, int len)
-{
-	int i = 0;
-	float* ret_ptr = (float*)malloc(len * sizeof(float));
-	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
-	}
-
-	for (i = 0; i < len; i++) {
-		ret_ptr[i] = *(img->ptr<float>(index, i));
-	}
-
-	return ret_ptr;
-}
-
-int* get_ipass(float* score, float threshold, int len, int* ipass_len)
+int* get_ipass(Mat* score, float threshold, int len, int* ipass_len)
 {
 	int i = 0;
 	int count = 0;
+	float* ptr = score->ptr<float>(0);
 
 	for (i = 0; i < len; i++) {
-		if (score[i] > threshold)
+		if (*ptr > threshold)
 			count++;
+		ptr++;
 	}
 
 	*ipass_len = count;
@@ -1144,21 +1128,25 @@ int* get_ipass(float* score, float threshold, int len, int* ipass_len)
 		printf("****malloc error in line %d****\n", __LINE__);
 		printf("*********************************\n");
 	}
+
 	int* tmp_ptr = ret_ptr;
+	ptr = score->ptr<float>(0);
 
 	for (i = 0; i < len; i++) {
-		if (score[i] > threshold) {
+		if (*ptr > threshold) {
 			*tmp_ptr = i;
 			tmp_ptr++;
 		}
+		ptr++;
 	}
 
 	return ret_ptr;
 }
 
-Mat get_hstack_rnet(Mat* img, int* ipass, int x, int y, float* score, int ipass_len)
+Mat get_hstack_ronet(Mat* img, int* ipass, int x, int y, Mat* score, int ipass_len)
 {
 	int i = 0, j = 0;
+	float* ptr = score->ptr<float>(0);
 
 	Mat ret_img = Mat::zeros(ipass_len, img->cols, CV_64FC1);
 
@@ -1167,7 +1155,7 @@ Mat get_hstack_rnet(Mat* img, int* ipass, int x, int y, float* score, int ipass_
 			if (x <= j && j < y) {
 				*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(ipass[i], j));
 			} else {
-				*(ret_img.ptr<double>(i, j)) = score[ipass[i]];
+				*(ret_img.ptr<double>(i, j)) = *(ptr + ipass[i]);
 			}
 		}
 	}
@@ -1190,7 +1178,7 @@ Mat get_mv(Mat* img, int* ipass, int ipass_len)
 	return ret_img;
 }
 
-Mat get_total_boxeses_pick(Mat* img, short* pick, int len)
+Mat get_total_boxes_pick(Mat* img, short* pick, int len)
 {
 	int i = 0, j = 0;
 	Mat ret_img = Mat::zeros(len, img->cols, CV_64FC1);
@@ -1219,7 +1207,7 @@ Mat transpose_mv_piack(Mat* img, short* pick, int len)
 	return ret_img;
 }
 
-void get_wh_bbreg(Mat* img, double* w, double* h, int len)
+void get_wh_in_bbreg(Mat* img, double* w, double* h, int len)
 {
 	int i = 0;
 	for (i = 0; i < len; i++) {
@@ -1230,7 +1218,7 @@ void get_wh_bbreg(Mat* img, double* w, double* h, int len)
 	return ;
 }
 
-void get_b_bbreg(Mat* img, Mat* mv, double* b1, double* b2, double* b3, double* b4, double* w, double* h, int len)
+void get_b_in_bbreg(Mat* img, Mat* mv, double* b1, double* b2, double* b3, double* b4, double* w, double* h, int len)
 {
 	int i = 0;
 	for (i = 0; i < len; i++) {
@@ -1265,13 +1253,13 @@ void get_bbreg_return(Mat* img, double* b1, double* b2, double* b3, double* b4, 
 	return ;
 }
 
-void bbreg(Mat* img, Mat* mv)
+void bbreg(Mat* boundingbox, Mat* reg)
 {
-	if (mv->cols == 1) {
-		/* reg = np.reshape(reg, (reg.shape[2], reg.shape[3])) */
+	if (reg->cols == 1) {
+		/* reg = np.reshape(reg, (reg.shape[2], reg.shape[3])); */
 	}
 
-	int len = mv->rows;
+	int len = reg->rows;
 
 	double* w = (double*)malloc(len * sizeof(double));
 	double* h = (double*)malloc(len * sizeof(double));
@@ -1285,10 +1273,10 @@ void bbreg(Mat* img, Mat* mv)
 		printf("*********************************\n");
 	}
 
-	get_wh_bbreg(img, w, h, len);
-	get_b_bbreg(img, mv, b1, b2, b3, b4, w, h, len);
+	get_wh_in_bbreg(boundingbox, w, h, len);
+	get_b_in_bbreg(boundingbox, reg, b1, b2, b3, b4, w, h, len);
 
-	get_bbreg_return(img, b1, b2, b3, b4, len);
+	get_bbreg_return(boundingbox, b1, b2, b3, b4, len);
 
 	free(w);
 	free(h);
@@ -1299,10 +1287,9 @@ void bbreg(Mat* img, Mat* mv)
 	return ;
 }
 
-Mat fix_total_boxeses(Mat* img)
+Mat fix_total_boxes(Mat* img)
 {
 	int i = 0, j = 0;
-	//Mat ret_img = Mat::zeros(img->rows, img->cols, CV_32SC1);
 	Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC1);
 	for (i = 0; i < img->rows; i++) {
 		for (j = 0; j < img->cols; j++) {
@@ -1362,6 +1349,7 @@ Mat  points_pick(Mat* img, short* pick, int pick_len)
 {
 	int i = 0, j = 0;
 	Mat ret_img = Mat::zeros(img->rows, pick_len, CV_32FC1);
+
 	for (i = 0; i < ret_img.rows; i++) {
 		for (j = 0; j < ret_img.cols; j++) {
 			*(ret_img.ptr<float>(i, j))= *(img->ptr<float>(i, pick[j]));

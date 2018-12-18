@@ -62,7 +62,7 @@ Mat get_q2(Mat*, int, double, int, int);
 
 Mat get_hstack_pnet(Mat*, Mat*, Mat*, Mat*, int);
 
-Mat get_hstack_rnet(Mat*, int*, int, int, float*, int);
+Mat get_hstack_ronet(Mat*, int*, int, int, Mat*, int);
 
 short* nms(Mat*, float, const char*, int*);
 
@@ -144,6 +144,8 @@ void get_ret_rerec(Mat*, int, int, int, int, Mat*);
 
 void get_total_boxes_fix(Mat*, int, int, int, int);
 
+void get_tmpwh(Mat*, int*, int, int);
+
 void pad(Mat*, int, int, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 
 void init_dx_dy_edx_edy(int*, int*, int*, int*, int*, int*, int);
@@ -160,23 +162,23 @@ void get_tempimg(Mat*, Mat*, int, int);
 
 Mat transpose3021(Mat*, int);
 
-float* get_score_out(Mat*, int, int);
-
-int* get_ipass(float*, float, int, int*);
+int* get_ipass(Mat*, float, int, int*);
 
 Mat get_mv(Mat*, int*, int);
 
-Mat get_total_boxeses_pick(Mat*, short*, int len);
+Mat get_total_boxes_pick(Mat*, short*, int len);
 
 Mat transpose_mv_piack(Mat*, short*, int);
 
 void bbreg(Mat*, Mat*);
 
-void get_wh_bbreg(Mat*, Mat*, double*, double*, double*, double*, double*, double*, int);
+void get_wh_in_bbreg(Mat*, double*, double*, int);
 
-void get_wh_bbreg(Mat*, double*, double*, int);
+void get_b_in_bbreg(Mat*, Mat*, double*, double*, double*, double*, double*, double*, int);
 
-Mat fix_total_boxeses(Mat*);
+void get_bbreg_return(Mat*, double*, double*, double*, double*, int);
+
+Mat fix_total_boxes(Mat*);
 
 Mat get_points(Mat*, int*, int);
 
