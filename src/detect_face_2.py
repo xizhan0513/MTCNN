@@ -31,6 +31,9 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         img_x = np.expand_dims(im_data, 0)
         img_y = np.transpose(img_x, (0,1,3,2))
         out = pnet(img_y)
+        print "pnet:"
+        print out[0].shape
+        print out[1].shape
 
         if j == 7:
             save_diff_file(out[0], "pout0.0")
@@ -100,6 +103,10 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         tempimg = (tempimg-127.5)*0.0078125
         tempimg1 = np.transpose(tempimg, (3,0,2,1))
         out = rnet(tempimg1)
+        print "rnet"
+        print out[0].shape
+        print out[1].shape
+
         save_diff_file(out[0], "rout0.bin")
         save_diff_file(out[1], "rout1.bin")
         out0 = np.transpose(out[0])
@@ -130,6 +137,10 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         tempimg = (tempimg-127.5)*0.0078125
         tempimg1 = np.transpose(tempimg, (3,0,2,1))
         out = onet(tempimg1)
+        print "onet"
+        print out[0].shape
+        print out[1].shape
+
         save_diff_file(out[0], "oout0.bin")
         save_diff_file(out[1], "oout1.bin")
         save_diff_file(out[2], "oout2.bin")
