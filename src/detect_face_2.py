@@ -103,7 +103,7 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         tempimg = (tempimg-127.5)*0.0078125
         tempimg1 = np.transpose(tempimg, (3,0,2,1))
         out = rnet(tempimg1)
-        print "rnet"
+        print "rnet:"
         print out[0].shape
         print out[1].shape
 
@@ -137,7 +137,7 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         tempimg = (tempimg-127.5)*0.0078125
         tempimg1 = np.transpose(tempimg, (3,0,2,1))
         out = onet(tempimg1)
-        print "onet"
+        print "onet:"
         print out[0].shape
         print out[1].shape
 

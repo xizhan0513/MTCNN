@@ -648,6 +648,11 @@ Mat update_I(Mat* I, double* o, float threshold)
 			count++;
 	}
 
+	if (count == 0) {
+		Mat ret_img = Mat::zeros(count, 0, CV_32SC1);
+		return ret_img;
+	}
+
 	Mat ret_img = Mat::zeros(count, 1, CV_32SC1);
 
 	for (i = 0; i < I->rows - 1; i++) {
@@ -1128,6 +1133,9 @@ int* get_ipass(Mat* score, float threshold, int len, int* ipass_len)
 			count++;
 		ptr++;
 	}
+
+	if (count == 0)
+		return NULL;
 
 	*ipass_len = count;
 	int* ret_ptr = (int*)malloc(count * sizeof(int));

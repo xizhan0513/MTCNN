@@ -75,6 +75,9 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		free(pick);
 	}
 
+	if (total_boxes.rows * total_boxes.cols == 0)
+		return total_boxes;
+
 	numbox = total_boxes.rows;
 
 	if (numbox > 0) {
@@ -157,6 +160,8 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		len = out0.cols;
 		Mat score = out1.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[1], len, &ipass_len);
+		if (ipass == NULL)
+			printf("in rnet, get_ipass() return NULL!\n");
 
 		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);
 
@@ -236,6 +241,9 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		len = out0.cols;
 		Mat score = out2.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[2], len, &ipass_len);
+		if (ipass == NULL)
+			printf("in onet, get_ipass() return NULL!\n");
+
 		Mat points = get_points(&out1, ipass, ipass_len);
 
 		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);

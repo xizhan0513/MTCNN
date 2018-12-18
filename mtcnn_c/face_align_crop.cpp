@@ -42,6 +42,11 @@ int main(int argc, char* argv[])
 
 		Mat points;
 		Mat bounding_boxes = detect_face(&img, threshold, scales, scales_len, &points);
+		if (bounding_boxes.rows * bounding_boxes.cols == 0) {
+			printf("No faces in the picture!!!\n");
+			return -1;
+		}
+
 		print_2D(&bounding_boxes, (double)1);
 		printf("----------------------------\n");
 		print_2D(&points, (float)1);
