@@ -264,7 +264,7 @@ Mat get_in1(Mat* img)
     return from_3DMat_select_rows(&tmp_img, 1);
 }
 
-void get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
+int get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
 {
     int i = 0, j = 0, k = 0;
     int count = 0;
@@ -278,6 +278,9 @@ void get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
             ptr++;
         }
     }
+
+	if (count == 0)
+		return -1;
 
     *xy_len = count;
 
@@ -301,7 +304,7 @@ void get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
 		}
     }
 
-    return ;
+    return 0;
 }
 
 Mat get_score_in_gBB(Mat* img, int* y, int *x, int xy_len)
@@ -445,7 +448,12 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
     int* x = NULL;
     int* y = NULL;
     int xy_len = 0;
-    get_xy(imap, &x, &y, t, &xy_len);
+    int ret = get_xy(imap, &x, &y, t, &xy_len);
+
+	if (ret != 0) {
+		Mat ret_img = Mat::zeros(0, 0, CV_64FC1);
+		return ret_img;
+	}
 
     if (xy_len == 1) {
         flip(dx1, dx1, 0);

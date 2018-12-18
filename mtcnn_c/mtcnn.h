@@ -48,7 +48,7 @@ Mat from_3DMat_select_rows(Mat*, int);
 
 Mat generateBoundingBox(Mat*, Mat*, double, float);
 
-void get_xy(Mat*, int**, int**, float, int*);
+int get_xy(Mat*, int**, int**, float, int*);
 
 Mat get_score_in_gBB(Mat*, int*, int*, int);
 

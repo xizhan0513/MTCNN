@@ -58,6 +58,8 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat in1 = get_in1(&out1);
 
 		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
+		if (boxes.rows * boxes.cols == 0)
+			break;
 
 		pick = nms(&boxes, 0.5, "Union", &pick_len);
 		if (pick == NULL) {
