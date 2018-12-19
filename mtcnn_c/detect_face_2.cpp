@@ -59,7 +59,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 		if (boxes.rows * boxes.cols == 0)
-			break;
+			continue;
 
 		pick = nms(&boxes, 0.5, "Union", &pick_len);
 		if (pick == NULL) {
@@ -250,17 +250,17 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
-		double* w = (double*)malloc(len * sizeof(double));
-		double* h = (double*)malloc(len * sizeof(double));
+		double* w = (double*)malloc(ipass_len * sizeof(double));
+		double* h = (double*)malloc(ipass_len * sizeof(double));
 		if (w == NULL || h == NULL) {
 			printf("*********************************\n");
 			printf("****malloc error in line %d****\n", __LINE__);
 			printf("*********************************\n");
 		}
 
-		get_wh_in_bbreg(&total_boxes, w, h, len);
+		get_wh_in_bbreg(&total_boxes, w, h, ipass_len);
 
-		update_points(&points, &total_boxes, w, h, len);
+		update_points(&points, &total_boxes, w, h, ipass_len);
 
 		if (total_boxes.rows > 0) {
 			transpose(mv, mv);

@@ -361,6 +361,7 @@ Mat get_bb(int* y, int* x, int xy_len)
 Mat get_q1(Mat* img, int stride, double scale, int xy_len)
 {
     int i = 0, j = 0;
+	int tmp_var = 0;
     int* ptr_src = NULL;
     double* ptr_dst = NULL;
 
@@ -370,7 +371,8 @@ Mat get_q1(Mat* img, int stride, double scale, int xy_len)
         ptr_src = img->ptr<int>(i);
         ptr_dst = ret_img.ptr<double>(i);
         for (j = 0; j < ret_img.cols; j++) {
-            *ptr_dst = floor((stride * (*ptr_src) + 1) / scale);
+            tmp_var = (stride * (*ptr_src) + 1) / scale;
+			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
             ptr_src++;
             ptr_dst++;
         }
@@ -382,6 +384,7 @@ Mat get_q1(Mat* img, int stride, double scale, int xy_len)
 Mat get_q2(Mat* img, int stride, double scale, int cellsize, int xy_len)
 {
     int i = 0, j = 0;
+	int tmp_var = 0;
     int* ptr_src = NULL;
     double* ptr_dst = NULL;
 
@@ -391,7 +394,8 @@ Mat get_q2(Mat* img, int stride, double scale, int cellsize, int xy_len)
         ptr_src = img->ptr<int>(i);
         ptr_dst = ret_img.ptr<double>(i);
         for (j = 0; j < ret_img.cols; j++) {
-            *ptr_dst = floor((stride * (*ptr_src) + cellsize - 1 + 1) / scale);
+            tmp_var = (stride * (*ptr_src) + cellsize - 1 + 1) / scale;
+			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
             ptr_src++;
             ptr_dst++;
         }
@@ -936,6 +940,7 @@ void rerec(Mat* img)
 void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
 {
 	int i = 0, j = 0;
+	int tmp_var = 0;
 	double* ptr_src = NULL;
 	double* ptr_dst = NULL;
 
@@ -943,7 +948,8 @@ void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
 		ptr_src = img->ptr<double>(i, xs);
 		ptr_dst = img->ptr<double>(i, ys);
 		for (j = 0; j < (xe - xs); j++) {
-			*ptr_dst = floor(*ptr_src);
+			tmp_var = *ptr_src;
+			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
 			ptr_src++;
 			ptr_dst++;
 		}
@@ -1306,10 +1312,12 @@ void bbreg(Mat* boundingbox, Mat* reg)
 Mat fix_total_boxes(Mat* img)
 {
 	int i = 0, j = 0;
+	int tmp_var = 0;
 	Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC1);
 	for (i = 0; i < img->rows; i++) {
 		for (j = 0; j < img->cols; j++) {
-			*(ret_img.ptr<double>(i, j)) = floor(*(img->ptr<double>(i, j)));
+			tmp_var = *(img->ptr<double>(i, j));
+			*(ret_img.ptr<double>(i, j)) = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
 		}
 	}
 

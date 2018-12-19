@@ -140,6 +140,7 @@ def detect_face(img, pnet, rnet, onet, threshold, scales):
         print "onet:"
         print out[0].shape
         print out[1].shape
+        print out[2].shape
 
         save_diff_file(out[0], "oout0.bin")
         save_diff_file(out[1], "oout1.bin")
