@@ -1,4 +1,5 @@
 #include "mtcnn.h"
+#include <sys/time.h>
 
 using namespace std;
 using namespace cv;
@@ -9,6 +10,12 @@ int main(int argc, char* argv[])
 		printf("Usage: ./test input_file pb_file output_file\n");
 		return -1;
 	}
+
+	struct timeval start, end;
+	int ret_start = 0, ret_end = 0;
+	unsigned int delta_ms = 0;
+
+	ret_start = gettimeofday(&start, NULL);
 
 	int minsize = 20;
 	float threshold[3] = {0.8, 0.85, 0.9};
@@ -56,6 +63,11 @@ int main(int argc, char* argv[])
 		cvtColor(warped, warped, CV_RGB2BGR, warped.channels());
 		imwrite(argv[3], warped);
 	}
+
+	ret_end = gettimeofday(&end, NULL);
+
+	delta_ms = (end.tv_sec * 1000 + end.tv_usec / 1000) - (start.tv_sec * 1000 + start.tv_usec / 1000);
+	printf("time:%dms\n", delta_ms);
 
 	return 0;
 }

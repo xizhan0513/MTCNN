@@ -9,6 +9,7 @@ from detect_face_2 import detect_face
 import cv2
 from skimage import transform as trans
 from tools import *
+import time
 
 def get_points(img, model_path, threshold, scales):
     detection_graph = tf.Graph()
@@ -50,6 +51,7 @@ def face_preprocess(img, landmark=None):
 def main(args):
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+    start = time.time()
     # parameters
     minsize = 20
     threshold = [0.8,0.85,0.9]
@@ -81,6 +83,9 @@ def main(args):
         warped = face_preprocess(img, landmark=_landmark)
         bgr = warped[...,::-1]
         cv2.imwrite(args.output_path + '1.jpg', bgr)
+        end = (time.time() - start)
+        print "time:"
+        print end
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
