@@ -32,7 +32,7 @@ cv::Mat findNonReflectiveTransform(std::vector<cv::Point2d> source_points, std::
     assert(source_points.size() >= 2);
     Mat U = Mat::zeros(target_points.size() * 2, 1, CV_64F);
     Mat X = Mat::zeros(source_points.size() * 2, 4, CV_64F);
-    for (int i = 0; i < target_points.size(); i++) {
+    for (unsigned int i = 0; i < target_points.size(); i++) {
       U.at<double>(i * 2, 0) = source_points[i].x;
       U.at<double>(i * 2 + 1, 0) = source_points[i].y;
       X.at<double>(i * 2, 0) = target_points[i].x;

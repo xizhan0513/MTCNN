@@ -836,7 +836,7 @@ double* get_qq(Mat* img, int x, int y, double* reg)
 
 Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* qq4, Mat* total_boxes, int index)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	Mat ret_img = Mat::zeros(total_boxes->rows, 5, CV_64FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
@@ -960,7 +960,7 @@ void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
 
 void get_tmpwh(Mat* img, int* tmp, int x, int y)
 {
-	int i = 0, j = 0;
+	int i = 0;
 
 	for (i = 0; i < img->rows; i++) {
 		tmp[i] = *(img->ptr<double>(i, x)) - *(img->ptr<double>(i, y)) + 1;
@@ -985,7 +985,7 @@ void init_dx_dy_edx_edy(int* dx, int* dy, int* edx, int* edy, int* tmpw, int* tm
 
 void init_x_y_ex_ey(Mat* img, int* x, int* y, int* ex, int* ey)
 {
-	int i = 0, j = 0;;
+	int i = 0;;
 
 	for (i = 0; i < img->rows; i++) {
 		x[i] = *(img->ptr<double>(i, 0));
@@ -1043,8 +1043,6 @@ void set_xy(int* dx, int* x, int w, int len)
 
 void pad(Mat* img, int h, int w, int* dy, int* edy, int* dx, int* edx, int* y, int* ey, int* x, int* ex, int* tmpw, int* tmph)
 {
-	int i = 0;
-
 	get_tmpwh(img, tmpw, 2, 0);
 	get_tmpwh(img, tmph, 3, 1);
 
@@ -1084,7 +1082,7 @@ void buckle_map(Mat* img, Mat* tmp, int* x, int* ex, int* y, int* ey, int* dx, i
 
 void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
 {
-	int i = 0, j = 0, v = 0, z = 0;
+	int i = 0, j = 0, v = 0;
 	double* ptr_src = NULL;
 	double* ptr_dst = (double*)tempimg->data + k;
 
@@ -1385,11 +1383,12 @@ Mat  points_pick(Mat* img, short* pick, int pick_len)
 
 Mat face_preprocess(Mat* img, Mat* landmark)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	float* ptr = NULL;
 	Mat ret_img;
 
 #if 0
+	int j = 0;
 	float src_arr[5][2] = {{38.2946, 51.6963}, {73.5318, 51.5014}, {56.0252, 71.7366}, {41.5493, 92.3655}, {70.7299, 92.2041}};
 	Mat src = Mat::zeros(5, 2, CV_32FC1);
 
@@ -1413,7 +1412,7 @@ Mat face_preprocess(Mat* img, Mat* landmark)
 		source_pts[i] = Point2d(*ptr, *(ptr + 1));
 	}
 
-	int ret = Align(*img, ret_img, source_pts);
+	Align(*img, ret_img, source_pts);
 #endif
 
 	return ret_img;

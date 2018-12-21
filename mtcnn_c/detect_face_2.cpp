@@ -27,7 +27,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	const char* onet_out_file[3] = {"oout0.bin", "oout1.bin", "oout2.bin"};
 	int out_file_index = 0;
 
-	unsigned int numbox = 0;
+	int numbox = 0;
 	int* dy = NULL;
 	int* edy = NULL;
 	int* dx = NULL;

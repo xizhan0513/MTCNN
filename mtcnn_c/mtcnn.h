@@ -2,10 +2,13 @@
 #define __MTCNN_H__
 
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
 #include <opencv2/opencv.hpp>	/* 包含所有opencv模块，影响编译速度，不影响运行速度的 */
 #include "align.h"
+#include "gxdnn.h"
 
 using namespace std;
 using namespace cv;

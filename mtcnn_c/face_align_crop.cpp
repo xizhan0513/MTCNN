@@ -16,6 +16,10 @@ int main(int argc, char* argv[])
 	unsigned int delta_ms = 0;
 
 	ret_start = gettimeofday(&start, NULL);
+	if (ret_start != 0) {
+		printf("gettimeofday failed!\n");
+		return -1;
+	}
 
 	int minsize = 20;
 	float threshold[3] = {0.8, 0.85, 0.9};
@@ -65,6 +69,10 @@ int main(int argc, char* argv[])
 	}
 
 	ret_end = gettimeofday(&end, NULL);
+	if (ret_end != 0) {
+		printf("gettimeofday failed!\n");
+		return 0;
+	}
 
 	delta_ms = (end.tv_sec * 1000 + end.tv_usec / 1000) - (start.tv_sec * 1000 + start.tv_usec / 1000);
 	printf("time:%dms\n", delta_ms);
