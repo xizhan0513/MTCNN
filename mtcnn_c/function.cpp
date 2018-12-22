@@ -1417,3 +1417,32 @@ Mat face_preprocess(Mat* img, Mat* landmark)
 
 	return ret_img;
 }
+
+void get_npu_input(Mat* img, float** input, int len)
+{
+	int i = 0, j = 0, k = 0, v = 0;
+	double* ptr = NULL;
+	int count = 0;
+
+	*input = (float*)malloc(img->size().height * img->size().width * len * img->channels() * sizeof(float));
+	if (*input == NULL) {
+		printf("*********************************\n");
+		printf("****malloc error in line %d****\n", __LINE__);
+		printf("*********************************\n");
+	}
+
+	for (i = 0; i < img->size().height; i++) {
+		for (j = 0; j < img->size().width; j++) {
+			for (k = 0; k < len; k++) {
+				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
+				for (v = 0; v < img->channels(); v++) {
+					(*input)[count] = (float)*ptr;
+					ptr++;
+					count++;
+				}
+			}
+		}
+	}
+
+	return ;
+}

@@ -27,6 +27,10 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	const char* onet_out_file[3] = {"oout0.bin", "oout1.bin", "oout2.bin"};
 	int out_file_index = 0;
 
+	const char* pnet_npu_file[9] = {"./npu/pnet49.npu", "./npu/pnet41.npu", "./npu/pnet35.npu", "./npu/pnet30.npu", "./npu/pnet26.npu", "./npu/pnet22.npu", "./npu/pnet19.npu", "./npu/pnet16.npu", "./npu/pnet14.npu"};
+	const char* rnet_npu_file[1] = {"./npu/rnet.npu"};
+	const char* onet_npu_file[1] = {"./npu/onet.npu"};
+
 	int numbox = 0;
 	int* dy = NULL;
 	int* edy = NULL;
@@ -39,6 +43,11 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	int* tmpw = NULL;
 	int* tmph = NULL;
 
+	GxDnnDevice npu_device;
+	float* npu_input_data = NULL;
+
+	init_npu_device(&npu_device);
+
 	for (i = 7; i < scales_len; i++) {
 		scale = scales[i];
 		hs = (int)ceil(h * scale);
@@ -47,15 +56,22 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat im_data = imresample(img, hs, ws, (unsigned char)1);
 		Mat img_y = get_img_y(&im_data);
 
+		get_npu_input(&img_y, &npu_input_data, hs);
+
+		Mat out = run_net(npu_device, npu_input_data, pnet_npu_file[i-7]);
 		/* out = pnet(img_y) */
 
-		Mat out0 = get_pnet_out(pnet_out_shape[i-7], pnet_out_file[out_file_index], 0);
+		/*Mat out0 = get_pnet_out(pnet_out_shape[i-7], pnet_out_file[out_file_index], 0);
 		out_file_index++;
 		Mat out1 = get_pnet_out(pnet_out_shape[i-7], pnet_out_file[out_file_index], 1);
-		out_file_index++;
+		out_file_index++;*/
+		print_4D(out0, pnet_out_shape[i-7][2], (float)1);
+		printf("--------------------------\n");
+		print_4D(out1, pnet_out_shape[i-7][2], (float)1);
 
-		Mat in0 = get_in0(&out0);
-		Mat in1 = get_in1(&out1);
+		break;
+		Mat in0 = get_in0(out0);
+		Mat in1 = get_in1(out1);
 
 		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 		if (boxes.rows * boxes.cols == 0)
@@ -72,9 +88,11 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 			total_boxes = append_total_boxes(&total_boxes, &boxes1);
 		}
 
+		free(npu_input_data);
 		free(pick);
 	}
 
+	return total_boxes;
 	if (total_boxes.rows * total_boxes.cols == 0)
 		return total_boxes;
 

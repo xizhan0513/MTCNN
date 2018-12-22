@@ -193,4 +193,10 @@ Mat  points_pick(Mat*, short*, int);
 
 Mat face_preprocess(Mat*, Mat*);
 
+void init_npu_device(GxDnnDevice*);
+
+void get_npu_input(Mat*, float**, int);
+
+Mat run_net(GxDnnDevice, float*, const char*);
+
 #endif
