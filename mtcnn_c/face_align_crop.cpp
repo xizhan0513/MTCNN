@@ -1,13 +1,12 @@
 #include "mtcnn.h"
-#include <sys/time.h>
 
 using namespace std;
 using namespace cv;
 
 int main(int argc, char* argv[])
 {
-	if (argc != 4) {
-		printf("Usage: ./test input_file pb_file output_file\n");
+	if (argc != 3) {
+		printf("Usage: ./test input_file output_file\n");
 		return -1;
 	}
 
@@ -37,9 +36,9 @@ int main(int argc, char* argv[])
 		int factor_count = 0;
 		int h = img.rows;
 		int w = img.cols;
-		double minl = h < w ? h : w;
+		float minl = h < w ? h : w;
 		float m = 12.0 / minsize;
-		double scales[SCALES_LEN] = {0};
+		float scales[SCALES_LEN] = {0};
 		int scales_len = SCALES_LEN;
 
 		minl = minl * m;
@@ -58,14 +57,14 @@ int main(int argc, char* argv[])
 			return -1;
 		}
 
-		print_2D(&bounding_boxes, (double)1);
+		print_2D(&bounding_boxes, (float)1);
 		printf("----------------------------\n");
 		print_2D(&points, (float)1);
-		Mat _landmark = points.reshape(0, 2).t();
+		Mat _landmark = points.colRange(0, 1).clone().reshape(0, 2).t();
 
 		Mat warped = face_preprocess(&img, &_landmark);
 		cvtColor(warped, warped, CV_RGB2BGR, warped.channels());
-		imwrite(argv[3], warped);
+		imwrite(argv[2], warped);
 	}
 
 	ret_end = gettimeofday(&end, NULL);

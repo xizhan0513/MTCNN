@@ -3,29 +3,19 @@
 using namespace std;
 using namespace cv;
 
-Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat* ret_points)
+Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* ret_points)
 {
 	int i = 0;
 	int h = img->rows;
 	int w = img->cols;
 	int hs = 0, ws = 0;
 	int len = 0;
-	double scale = 0;
+	float scale = 0;
 	short* pick = NULL;
 	int pick_len = 0;
 	int ipass_len = 0;
-	Mat total_boxes;
-
 	int Mat_init_size[3] = {0};
-	int pnet_out_shape[9][4] = {{1, 4, 20, 20}, {1, 4, 16, 16}, {1, 4, 13, 13}, {1, 4, 10, 10}, {1, 4, 8, 8}, {1, 4, 6, 6}, {1, 4, 5, 5}, {1, 4, 3, 3}, {1, 4, 2, 2}};
-	int rnet_out_shape[2] = {17, 4};
-	int onet_out_shape[3][2] = {{6, 4}, {6, 10}, {6, 2}};
-
-	const char* pnet_out_file[18] = {"pout0.0", "pout0.1", "pout1.0", "pout1.1", "pout2.0", "pout2.1", "pout3.0", "pout3.1", "pout4.0",\
-									"pout4.1", "pout5.0", "pout5.1", "pout6.0", "pout6.1", "pout7.0", "pout7.1", "pout8.0", "pout8.1"};
-	const char* rnet_out_file[2] = {"rout0.bin", "rout1.bin"};
-	const char* onet_out_file[3] = {"oout0.bin", "oout1.bin", "oout2.bin"};
-	int out_file_index = 0;
+	Mat total_boxes;
 
 	const char* pnet_npu_file[9] = {"./npu/pnet49.npu", "./npu/pnet41.npu", "./npu/pnet35.npu", "./npu/pnet30.npu", "./npu/pnet26.npu", "./npu/pnet22.npu", "./npu/pnet19.npu", "./npu/pnet16.npu", "./npu/pnet14.npu"};
 	const char* rnet_npu_file[1] = {"./npu/rnet.npu"};
@@ -44,7 +34,6 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	int* tmph = NULL;
 
 	GxDnnDevice npu_device;
-	float* npu_input_data = NULL;
 
 	init_npu_device(&npu_device);
 
@@ -54,24 +43,15 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		ws = (int)ceil(w * scale);
 
 		Mat im_data = imresample(img, hs, ws, (unsigned char)1);
-		Mat img_y = get_img_y(&im_data);
+		float* img_y = get_img_y(&im_data);
 
-		get_npu_input(&img_y, &npu_input_data, hs);
-
-		Mat out = run_net(npu_device, npu_input_data, pnet_npu_file[i-7]);
 		/* out = pnet(img_y) */
+		Mat out = run_pnet(npu_device, img_y, pnet_npu_file[i - 7]);
+		Mat out0 = out.rowRange(0, 4).clone();
+		Mat out1 = out.rowRange(4, 6).clone();
 
-		/*Mat out0 = get_pnet_out(pnet_out_shape[i-7], pnet_out_file[out_file_index], 0);
-		out_file_index++;
-		Mat out1 = get_pnet_out(pnet_out_shape[i-7], pnet_out_file[out_file_index], 1);
-		out_file_index++;*/
-		print_4D(out0, pnet_out_shape[i-7][2], (float)1);
-		printf("--------------------------\n");
-		print_4D(out1, pnet_out_shape[i-7][2], (float)1);
-
-		break;
-		Mat in0 = get_in0(out0);
-		Mat in1 = get_in1(out1);
+		Mat in0 = get_in0(&out0);
+		Mat in1 = get_in1(&out1);
 
 		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
 		if (boxes.rows * boxes.cols == 0)
@@ -79,7 +59,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		pick = nms(&boxes, 0.5, "Union", &pick_len);
 		if (pick == NULL) {
-			printf("nms failed\n");
+			printf("nms execute failed!\n");
 			return boxes;
 		}
 
@@ -88,11 +68,10 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 			total_boxes = append_total_boxes(&total_boxes, &boxes1);
 		}
 
-		free(npu_input_data);
+		free(img_y);
 		free(pick);
 	}
 
-	return total_boxes;
 	if (total_boxes.rows * total_boxes.cols == 0)
 		return total_boxes;
 
@@ -100,16 +79,21 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 	if (numbox > 0) {
 		pick = nms(&total_boxes, 0.7, "Union", &pick_len);
+		if (pick == NULL) {
+			printf("nms execute failed!\n");
+			return total_boxes;
+		}
+
 		total_boxes = get_boxes_from_pick(&total_boxes, pick, pick_len);
 		len = total_boxes.rows;
 
-		double* regw = mat_cols_sub(total_boxes.colRange(2, 3), total_boxes.colRange(0, 1));
-		double* regh = mat_cols_sub(total_boxes.colRange(3, 4), total_boxes.colRange(1, 2));
+		float* regw = mat_cols_sub(total_boxes.colRange(2, 3), total_boxes.colRange(0, 1));
+		float* regh = mat_cols_sub(total_boxes.colRange(3, 4), total_boxes.colRange(1, 2));
 
-		double* qq1 = get_qq(&total_boxes, 0, 5, regw);
-		double* qq2 = get_qq(&total_boxes, 1, 6, regh);
-		double* qq3 = get_qq(&total_boxes, 2, 7, regw);
-		double* qq4 = get_qq(&total_boxes, 3, 8, regh);
+		float* qq1 = get_qq(&total_boxes, 0, 5, regw);
+		float* qq2 = get_qq(&total_boxes, 1, 6, regh);
+		float* qq3 = get_qq(&total_boxes, 2, 7, regw);
+		float* qq4 = get_qq(&total_boxes, 3, 8, regh);
 
 		total_boxes = get_vstack_qq_and_transpose(qq1, qq2, qq3, qq4, &total_boxes, 4);
 
@@ -128,9 +112,8 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		tmpw = (int*)malloc(len * sizeof(int));
 		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
-			printf("*********************************\n");
-			printf("****malloc error in line %d****\n", __LINE__);
-			printf("*********************************\n");
+			printf("malloc failed in %d lines!\n", __LINE__);
+			return total_boxes;
 		}
 
 		pad(&total_boxes, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
@@ -145,18 +128,19 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	}
 
 	numbox = total_boxes.rows;
+
 	if (numbox > 0) {
 		Mat_init_size[0] = 3;
 		Mat_init_size[1] = 24;
 		Mat_init_size[2] = 24;
-		Mat tempimg = Mat(3, Mat_init_size, CV_64FC(numbox), Scalar::all(0));
+		Mat tempimg = Mat(3, Mat_init_size, CV_32FC(numbox), Scalar::all(0));
 
 		for (i = 0; i < numbox; i++) {
-			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_64FC3);
+			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_32FC3);
 
 			buckle_map(img, &tmp, x, ex, y, ey, dx, edx, dy, edy, i);
 			if (((tmp.rows > 0) && (tmp.cols > 0)) || ((tmp.rows == 0) && (tmp.cols == 0))) {
-				Mat tmp_tempimg = imresample(&tmp, 24, 24, (double)1);
+				Mat tmp_tempimg = imresample(&tmp, 24, 24, (float)1);
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
 				printf("buckle map execute failed!\n");
@@ -164,13 +148,13 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 			}
 		}
 
-		image_normalization(&tempimg, Mat_init_size[2], (double)1);
-		Mat tempimg1 = transpose3021(&tempimg, Mat_init_size[2]);
+		Mat tempimg_tmp = transpose3021(&tempimg, Mat_init_size[2]);
+		float* tempimg1 = image_normalization(&tempimg_tmp, Mat_init_size[2], (float)1);
 
 		/* out = rnet(tempimg1); */
-
-		Mat out0 = get_rnet_out(rnet_out_shape, rnet_out_file[0], 0);
-		Mat out1 = get_rnet_out(rnet_out_shape, rnet_out_file[1], 1);
+		Mat out = run_rnet(npu_device, tempimg1, rnet_npu_file[0], numbox);
+		Mat out0 = out.colRange(0, 4).clone();
+		Mat out1 = out.colRange(4, 6).clone();
 
 		transpose(out0, out0);
 		transpose(out1, out1);
@@ -179,7 +163,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat score = out1.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[1], len, &ipass_len);
 		if (ipass == NULL)
-			printf("in rnet, get_ipass() return NULL!\n");
+			printf("In rnet, get_ipass() function return NULL!\n");
 
 		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);
 
@@ -187,12 +171,18 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		if (total_boxes.rows > 0) {
 			pick = nms(&total_boxes, 0.7, "Union", &pick_len);
+			if (pick == NULL) {
+				printf("nms execute failed!\n");
+				return total_boxes;
+			}
+
 			total_boxes = get_total_boxes_pick(&total_boxes, pick, pick_len);
 			mv = transpose_mv_piack(&mv, pick, pick_len);
 			bbreg(&total_boxes, &mv);
 			rerec(&total_boxes);
 		}
 
+		free(tempimg1);
 		free(dy);
 		free(edy);
 		free(dx);
@@ -208,6 +198,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 	}
 
 	numbox = total_boxes.rows;
+
 	if (numbox > 0) {
 		len = total_boxes.rows;
 		dy = (int*)malloc(len * sizeof(int));
@@ -221,9 +212,8 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		tmpw = (int*)malloc(len * sizeof(int));
 		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
-			printf("*********************************\n");
-			printf("****malloc error in line %d****\n", __LINE__);
-			printf("*********************************\n");
+			printf("malloc failed in %d lines!\n", __LINE__);
+			return total_boxes;
 		}
 
 		total_boxes = fix_total_boxes(&total_boxes);
@@ -231,26 +221,27 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat_init_size[0] = 3;
 		Mat_init_size[1] = 48;
 		Mat_init_size[2] = 48;
-		Mat tempimg = Mat(3, Mat_init_size, CV_64FC(numbox), Scalar::all(0));
+		Mat tempimg = Mat(3, Mat_init_size, CV_32FC(numbox), Scalar::all(0));
 
 		for (i = 0; i < numbox; i++) {
-			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_64FC3);
+			Mat tmp = Mat::zeros(tmph[i], tmpw[i], CV_32FC3);
 
 			buckle_map(img, &tmp, x, ex, y, ey, dx, edx, dy, edy, i);
 			if (((tmp.rows > 0) && (tmp.cols > 0)) || ((tmp.rows == 0) && (tmp.cols == 0))) {
-				Mat tmp_tempimg = imresample(&tmp, 48, 48, (double)1);
+				Mat tmp_tempimg = imresample(&tmp, 48, 48, (float)1);
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
 				return tmp;
 			}
 		}
 
-		image_normalization(&tempimg, Mat_init_size[2], (double)1);
-		Mat tempimg1 = transpose3021(&tempimg, Mat_init_size[2]);
+		Mat tempimg_tmp = transpose3021(&tempimg, Mat_init_size[2]);
+		float* tempimg1 = image_normalization(&tempimg_tmp, Mat_init_size[2], (float)1);
 
-		Mat out0 = get_onet_out(onet_out_shape[0], onet_out_file[0]);
-		Mat out1 = get_onet_out(onet_out_shape[1], onet_out_file[1]);
-		Mat out2 = get_onet_out(onet_out_shape[2], onet_out_file[2]);
+		Mat out = run_onet(npu_device, tempimg1, onet_npu_file[0], numbox);
+		Mat out0 = out.colRange(0, 4).clone();
+		Mat out1 = out.colRange(4, 14).clone();
+		Mat out2 = out.colRange(14, 16).clone();
 
 		transpose(out0, out0);
 		transpose(out1, out1);
@@ -260,7 +251,7 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		Mat score = out2.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[2], len, &ipass_len);
 		if (ipass == NULL)
-			printf("in onet, get_ipass() return NULL!\n");
+			printf("In onet, get_ipass() return NULL!\n");
 
 		Mat points = get_points(&out1, ipass, ipass_len);
 
@@ -268,12 +259,11 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
-		double* w = (double*)malloc(ipass_len * sizeof(double));
-		double* h = (double*)malloc(ipass_len * sizeof(double));
+		float* w = (float*)malloc(ipass_len * sizeof(float));
+		float* h = (float*)malloc(ipass_len * sizeof(float));
 		if (w == NULL || h == NULL) {
-			printf("*********************************\n");
-			printf("****malloc error in line %d****\n", __LINE__);
-			printf("*********************************\n");
+			printf("malloc failed in %d lines!\n", __LINE__);
+			return total_boxes;
 		}
 
 		get_wh_in_bbreg(&total_boxes, w, h, ipass_len);
@@ -284,6 +274,11 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 			transpose(mv, mv);
 			bbreg(&total_boxes, &mv);
 			pick = nms(&total_boxes, 0.7, "Min", &pick_len);
+			if (pick == NULL) {
+				printf("nms execute failed!\n");
+				return total_boxes;
+			}
+
 			total_boxes = get_boxes_from_pick(&total_boxes, pick, pick_len);
 
 			*ret_points = points_pick(&points, pick, pick_len);
@@ -304,6 +299,8 @@ Mat detect_face(Mat* img, float* threshold, double* scales, int scales_len, Mat*
 		free(tmph);
 		free(pick);
 	}
+
+	GxDnnCloseDevice(npu_device);
 
 	return total_boxes;
 }

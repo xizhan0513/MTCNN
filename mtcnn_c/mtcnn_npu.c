@@ -7,16 +7,18 @@ void init_npu_device(GxDnnDevice* device)
 	return ;
 }
 
-Mat run_net(GxDnnDevice device, float* input_data, const char* model_name)
+Mat run_pnet(GxDnnDevice device, float* net_input_data, const char* model_name)
 {
 	int i = 0, j = 0, k = 0;
-	int w = 0, l = 0, c = 0;
 	int ret = 0;
 	int priority = 5;
 	int input_num = 0, output_num = 0;
 	int input_size = 0, output_size = 0;
+	float* ptr = NULL;
 	float* result = NULL;
 	int result_num = 0;
+	int Mat_size = 0;
+	Mat ret_img;
 	GxDnnTask task;
 	GxDnnIOInfo *input, *output;
 	GxDnnEventHandler event_handler = NULL;
@@ -25,7 +27,7 @@ Mat run_net(GxDnnDevice device, float* input_data, const char* model_name)
 	ret = GxDnnCreateTaskFromFile(device, model_name, &task);
 	if (ret != GXDNN_RESULT_SUCCESS) {
 		printf("Error: load model fail!\n");
-		return -1;
+		return ret_img;
 	}
 
 	GxDnnGetTaskIONum(task, &input_num, &output_num);
@@ -33,62 +35,45 @@ Mat run_net(GxDnnDevice device, float* input_data, const char* model_name)
 	output_size = output_num * sizeof(GxDnnIOInfo);
 	input = (GxDnnIOInfo*)malloc(input_size);
 	output = (GxDnnIOInfo*)malloc(output_size);
+
 	if (input == NULL || output == NULL) {
-		printf("Error: malloc fail!\n");
-		return -1;
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ret_img;
 	}
 
 	GxDnnGetTaskIOInfo(task, input, input_size, output, output_size);
 
-	memcpy(input[0].dataBuffer, (void*)input_data, input[0].bufferSize);
+	memcpy(input[0].dataBuffer, (void*)net_input_data, input[0].bufferSize);
 
 	GxDnnRunTask(task, priority, event_handler, NULL);
+
+	result = (float*)output[1].dataBuffer;
+	result_num = output[1].bufferSize / sizeof(float);
+
+	Mat_size = sqrt(result_num / 4);
+	Mat out0 = Mat::zeros(4, Mat_size, CV_32FC(Mat_size));
+
+	for (i = 0; i < out0.rows; i++) {
+		for (j = 0; j < out0.cols; j++) {
+			ptr = out0.ptr<float>(i, j);
+			for (k = 0; k < out0.channels(); k++) {
+				*ptr = *result;
+				ptr++;
+				result++;
+			}
+		}
+	}
 
 	result = (float*)output[0].dataBuffer;
 	result_num = output[0].bufferSize / sizeof(float);
 
-	Mat ret_img = get_pnet_out();
+	Mat_size = sqrt(result_num / 2);
+	Mat out1 = Mat::zeros(2, Mat_size, CV_32FC(Mat_size));
 
-	w = 6;
-	l = c = sqrt(result_num / 4);
-
-	float* ptr = NULL;
-	int Mat_init_size[3] = {0};
-	Mat_init_size[0] = 1;
-	Mat_init_size[1] = w;
-	Mat_init_size[2] = l;
-	Mat tmp = Mat(3, Mat_init_size, CV_32FC(c), Scalar::all(0));
-
-
-	*out1 = tmp;
-	printf("***************\n");
-	for (i = 0; i < w; i++) {
-		for (j = 0; j < l; j++) {
-			ptr = (float*)(out1->data + out1->step[0] * 0 + out1->step[1] * i + out1->step[2] * j);
-			for (k = 0; k < c; k++) {
-				*ptr = *result;
-				printf("----\n");
-				ptr++;
-				result++;
-			}
-		}
-	}
-
-	printf("***************\n");
-	result = (float*)output[1].dataBuffer;
-	result_num = output[1].bufferSize / sizeof(float);
-
-	w = 4;
-	l = c = sqrt(result_num / 4);
-	Mat_init_size[0] = 1;
-	Mat_init_size[1] = w;
-	Mat_init_size[2] = l;
-	*out0 = Mat(3, Mat_init_size, CV_32FC(c), Scalar::all(0));
-
-	for (i = 0; i < w; i++) {
-		for (j = 0; j < l; j++) {
-			ptr = (float*)(out0->data + out0->step[0] * 0 + out0->step[1] * i + out0->step[2] * j);
-			for (k = 0; k < c; k++) {
+	for (i = 0; i < out1.rows; i++) {
+		for (j = 0; j < out1.cols; j++) {
+			ptr = out1.ptr<float>(i, j);
+			for (k = 0; k < out1.channels(); k++) {
 				*ptr = *result;
 				ptr++;
 				result++;
@@ -96,12 +81,190 @@ Mat run_net(GxDnnDevice device, float* input_data, const char* model_name)
 		}
 	}
 
-	//print_1D(result, result_num);
+	vconcat(out0, out1, ret_img);
 
 	GxDnnReleaseTask(task);
 
 	free(input);
 	free(output);
 
-	return 0;
+	return ret_img;
 }
+
+Mat run_rnet(GxDnnDevice device, float* net_input_data, const char* model_name, int len)
+{
+	int i = 0, j = 0;
+	int ret = 0;
+	int priority = 5;
+	int input_num = 0, output_num = 0;
+	int input_size = 0, output_size = 0;
+	float* result = NULL;
+	int result_num = 0;
+	float *out_ptr = NULL;
+	Mat ret_img = Mat::zeros(len, 6, CV_32FC1);
+	GxDnnTask task;
+	GxDnnIOInfo *input, *output;
+	GxDnnEventHandler event_handler = NULL;
+
+	/* 传入模型文件，获取模型task */
+	ret = GxDnnCreateTaskFromFile(device, model_name, &task);
+	if (ret != GXDNN_RESULT_SUCCESS) {
+		printf("Error: load model fail!\n");
+		return ret_img;
+	}
+
+	GxDnnGetTaskIONum(task, &input_num, &output_num);
+	input_size = input_num * sizeof(GxDnnIOInfo);
+	output_size = output_num * sizeof(GxDnnIOInfo);
+	input = (GxDnnIOInfo*)malloc(input_size);
+	output = (GxDnnIOInfo*)malloc(output_size);
+
+	if (input == NULL || output == NULL) {
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ret_img;
+	}
+
+	GxDnnGetTaskIOInfo(task, input, input_size, output, output_size);
+
+	out_ptr = (float*)malloc(len * 6 * sizeof(float));
+	if (out_ptr == NULL) {
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ret_img;
+	}
+	float* tmp_out = out_ptr;
+
+	while (len > 0) {
+		memcpy(input[0].dataBuffer, (void*)net_input_data, input[0].bufferSize);
+		GxDnnRunTask(task, priority, event_handler, NULL);
+
+		result = (float*)output[1].dataBuffer;
+		result_num = output[1].bufferSize / sizeof(float);
+		for (i = 0; i < result_num; i++) {
+			*tmp_out = *result;
+			tmp_out++;
+			result++;
+		}
+
+		result = (float*)output[0].dataBuffer;
+		result_num = output[0].bufferSize / sizeof(float);
+		for (i = 0; i < result_num; i++) {
+			*tmp_out = *result;
+			tmp_out++;
+			result++;
+		}
+
+		len--;
+		net_input_data += input[0].bufferSize / sizeof(float);
+	}
+
+	tmp_out = out_ptr;
+
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*ret_img.ptr<float>(i, j) = *tmp_out;
+			tmp_out++;
+		}
+	}
+
+	GxDnnReleaseTask(task);
+
+	free(out_ptr);
+	free(input);
+	free(output);
+
+	return ret_img;
+}
+
+Mat run_onet(GxDnnDevice device, float* net_input_data, const char* model_name, int len)
+{
+	int i = 0, j = 0;
+	int ret = 0;
+	int priority = 5;
+	int input_num = 0, output_num = 0;
+	int input_size = 0, output_size = 0;
+	float* result = NULL;
+	int result_num = 0;
+	float *out_ptr = NULL;
+	Mat ret_img = Mat::zeros(len, 16, CV_32FC1);
+	GxDnnTask task;
+	GxDnnIOInfo *input, *output;
+	GxDnnEventHandler event_handler = NULL;
+
+	/* 传入模型文件，获取模型task */
+	ret = GxDnnCreateTaskFromFile(device, model_name, &task);
+	if (ret != GXDNN_RESULT_SUCCESS) {
+		printf("Error: load model fail!\n");
+		return ret_img;
+	}
+
+	GxDnnGetTaskIONum(task, &input_num, &output_num);
+	input_size = input_num * sizeof(GxDnnIOInfo);
+	output_size = output_num * sizeof(GxDnnIOInfo);
+	input = (GxDnnIOInfo*)malloc(input_size);
+	output = (GxDnnIOInfo*)malloc(output_size);
+
+	if (input == NULL || output == NULL) {
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ret_img;
+	}
+
+	GxDnnGetTaskIOInfo(task, input, input_size, output, output_size);
+
+	out_ptr = (float*)malloc(len * 16 * sizeof(float));
+	if (out_ptr == NULL) {
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ret_img;
+	}
+
+	float* tmp_out = out_ptr;
+
+	while (len > 0) {
+		memcpy(input[0].dataBuffer, (void*)net_input_data, input[0].bufferSize);
+		GxDnnRunTask(task, priority, event_handler, NULL);
+
+		result = (float*)output[1].dataBuffer;
+		result_num = output[1].bufferSize / sizeof(float);
+		for (i = 0; i < result_num; i++) {
+			*tmp_out = *result;
+			tmp_out++;
+			result++;
+		}
+
+		result = (float*)output[2].dataBuffer;
+		result_num = output[2].bufferSize / sizeof(float);
+		for (i = 0; i < result_num; i++) {
+			*tmp_out = *result;
+			tmp_out++;
+			result++;
+		}
+
+		result = (float*)output[0].dataBuffer;
+		result_num = output[0].bufferSize / sizeof(float);
+		for (i = 0; i < result_num; i++) {
+			*tmp_out = *result;
+			tmp_out++;
+			result++;
+		}
+
+		len--;
+		net_input_data += input[0].bufferSize / sizeof(float);
+	}
+
+	tmp_out = out_ptr;
+
+	for (i = 0; i < ret_img.rows; i++) {
+		for (j = 0; j < ret_img.cols; j++) {
+			*ret_img.ptr<float>(i, j) = *tmp_out;
+			tmp_out++;
+		}
+	}
+
+	GxDnnReleaseTask(task);
+
+	free(out_ptr);
+	free(input);
+	free(output);
+
+	return ret_img;
+}
+

@@ -45,20 +45,6 @@ void print_1D(float* img, int len)
 	return ;
 }
 
-void print_1D(double* img, int len)
-{
-	int i = 0;
-
-	printf("len = %d\n", len);
-	printf("[");
-	for (i = 0; i < len; i++) {
-		printf("%.8f ", img[i]);
-	}
-	printf("]\n");
-
-	return ;
-}
-
 void print_2D(Mat* img, int type)
 {
 	int i = 0, j = 0;
@@ -87,25 +73,6 @@ void print_2D(Mat* img, float type)
     for (i = 0; i < img->rows; i++) {
         printf("[");
 		ptr = img->ptr<float>(i);
-        for (j = 0; j < img->cols; j++) {
-            printf("%.8f ", *ptr);
-			ptr++;
-        }
-		printf("]\n");
-    }
-
-    return ;
-}
-
-void print_2D(Mat* img, double type)
-{
-	int i = 0, j = 0;
-    double* ptr = NULL;
-
-	printf("rows = %d, cols = %d, channels = %d\n", img->rows, img->cols, img->channels());
-    for (i = 0; i < img->rows; i++) {
-        printf("[");
-		ptr = img->ptr<double>(i);
         for (j = 0; j < img->cols; j++) {
             printf("%.8f ", *ptr);
 			ptr++;
@@ -166,31 +133,6 @@ void print_3D(Mat* img, float type)
 	return ;
 }
 
-void print_3D(Mat* img, double type)
-{
-    int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
-
-    printf("rows = %d, cols = %d, channels = %d\n", img->rows, img->cols, img->channels());
-    printf("[");
-    for (i = 0; i < img->rows; i++) {
-        printf("[");
-        for (j = 0; j < img->cols; j++) {
-            ptr = img->ptr<double>(i, j);
-            printf("[");
-            for(k = 0; k < img->channels(); k++) {
-                printf("%.8f ", *ptr);
-				ptr++;
-            }
-            printf("]\n");
-        }
-        printf("]\n");
-    }
-    printf("]\n");
-
-	return ;
-}
-
 void print_4D(Mat* img, int len, float type)
 {
     int i = 0, j = 0, k = 0, v = 0;
@@ -220,35 +162,6 @@ void print_4D(Mat* img, int len, float type)
 	return ;
 }
 
-void print_4D(Mat* img, int len, double type)
-{
-    int i = 0, j = 0, k = 0, v = 0;
-    double* ptr = NULL;
-
-	printf("height = %d, width = %d, lenth = %d, channels = %d\n", img->size().height, img->size().width, len, img->channels());
-    printf("[");
-    for (i = 0; i < img->size().height; i++) {
-        printf("[");
-        for (j = 0; j < img->size().width; j++) {
-            printf("[");
-            for(k = 0; k < len; k++) {
-				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
-				printf("[");
-				for (v = 0; v < img->channels(); v++) {
-					printf("%.8f ", *ptr);
-					ptr++;
-				}
-				printf("]\n");
-            }
-            printf("]\n");
-        }
-        printf("]\n");
-    }
-    printf("]\n");
-
-	return ;
-}
-
 void save_diff_file_2D(Mat* img, float type)
 {
 	int i = 0, j = 0;
@@ -260,25 +173,6 @@ void save_diff_file_2D(Mat* img, float type)
         ptr = img->ptr<float>(i);
         for (j = 0; j < img->cols; j++) {
 			fwrite(ptr, 4, 1, f);
-            ptr++;
-        }
-    }
-
-    fclose(f);
-    return ;
-}
-
-void save_diff_file_2D(Mat* img, double type)
-{
-	int i = 0, j = 0;
-    double* ptr = NULL;
-
-	FILE* f = fopen("2D_double.bin", "wb+");
-
-    for (i = 0; i < img->rows; i++) {
-        ptr = img->ptr<double>(i);
-        for (j = 0; j < img->cols; j++) {
-			fwrite(ptr, 8, 1, f);
             ptr++;
         }
     }
@@ -329,27 +223,6 @@ void save_diff_file_3D(Mat* img, float type)
     return ;
 }
 
-void save_diff_file_3D(Mat* img, double type)
-{
-	int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
-
-	FILE* f = fopen("3D_double.bin", "wb+");
-
-    for (i = 0; i < img->rows; i++) {
-        for (j = 0; j < img->cols; j++) {
-            ptr = img->ptr<double>(i, j);
-            for (k = 0; k < img->channels(); k++) {
-                    fwrite(ptr, 8, 1, f);
-                    ptr++;
-            }
-        }
-    }
-
-    fclose(f);
-    return ;
-}
-
 void save_diff_file_4D(Mat* img, int len, float type)
 {
 	int i = 0, j = 0, k = 0, v = 0;
@@ -363,29 +236,6 @@ void save_diff_file_4D(Mat* img, int len, float type)
 				ptr = (float*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
 				for (v = 0; v < img->channels(); v++) {
 					fwrite(ptr, 4, 1, f);
-                    ptr++;
-				}
-            }
-        }
-    }
-
-    fclose(f);
-    return ;
-}
-
-void save_diff_file_4D(Mat* img, int len, double type)
-{
-	int i = 0, j = 0, k = 0, v = 0;
-    double* ptr = NULL;
-
-	FILE* f = fopen("4D_double.bin", "wb+");
-
-    for (i = 0; i < img->size().height; i++) {
-        for (j = 0; j < img->size().width; j++) {
-            for (k = 0; k < len; k++) {
-				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
-				for (v = 0; v < img->channels(); v++) {
-					fwrite(ptr, 8, 1, f);
                     ptr++;
 				}
             }

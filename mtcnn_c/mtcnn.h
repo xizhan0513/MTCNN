@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <opencv2/opencv.hpp>	/* 包含所有opencv模块，影响编译速度，不影响运行速度的 */
 #include "align.h"
 #include "gxdnn.h"
@@ -13,35 +14,27 @@
 using namespace std;
 using namespace cv;
 
-#define SCALES_LEN 16
+#define SCALES_LEN 16			/* 生成图像金字塔的个数 */
 
-Mat detect_face(Mat*, float*, double*, int, Mat*);
+Mat detect_face(Mat*, float*, float*, int, Mat*);
 
 Mat imresample(Mat*, int, int, unsigned char);
 
-Mat imresample(Mat*, int, int, double);
+Mat imresample(Mat*, int, int, float);
 
 Mat transpose_201(Mat*, unsigned char);
 
-Mat transpose_201(Mat*, double);
+Mat transpose_201(Mat*, float);
 
-Mat transpose_021(Mat*, float);
+Mat transpose_021(Mat*);
 
-Mat transpose_021(Mat*, double);
+Mat transpose3021(Mat*, int);
 
 Mat image_normalization(Mat*, unsigned char type);
 
-void image_normalization(Mat*, int, double type);
+float* image_normalization(Mat*, int, float type);
 
-Mat get_img_y(Mat*);
-
-Mat expand_dims(Mat*);
-
-Mat get_pnet_out(int*, const char*, int);
-
-Mat get_rnet_out(int*, const char*, int);
-
-Mat get_onet_out(int*, const char*);
+float* get_img_y(Mat*);
 
 Mat get_in0(Mat*);
 
@@ -49,7 +42,7 @@ Mat get_in1(Mat*);
 
 Mat from_3DMat_select_rows(Mat*, int);
 
-Mat generateBoundingBox(Mat*, Mat*, double, float);
+Mat generateBoundingBox(Mat*, Mat*, float, float);
 
 int get_xy(Mat*, int**, int**, float, int*);
 
@@ -57,11 +50,11 @@ Mat get_score_in_gBB(Mat*, int*, int*, int);
 
 Mat get_vstack_in_gBB(Mat*, Mat*, Mat*, Mat*, int*, int*, int);
 
-Mat get_bb(int*, int*, int);
+Mat get_bb_in_gBB(int*, int*, int);
 
-Mat get_q1(Mat*, int, double, int);
+Mat get_q1(Mat*, int, float, int);
 
-Mat get_q2(Mat*, int, double, int, int);
+Mat get_q2(Mat*, int, float, int, int);
 
 Mat get_hstack_pnet(Mat*, Mat*, Mat*, Mat*, int);
 
@@ -77,71 +70,57 @@ void print_1D(int*, int);
 
 void print_1D(float*, int);
 
-void print_1D(double*, int);
-
 void print_2D(Mat*, int);
 
 void print_2D(Mat*, float);
-
-void print_2D(Mat*, double);
 
 void print_3D(Mat*, unsigned char);
 
 void print_3D(Mat*, float);
 
-void print_3D(Mat*, double);
-
 void print_4D(Mat*, int, float);
 
-void print_4D(Mat*, int, double);
-
 void save_diff_file_2D(Mat*, float);
-
-void save_diff_file_2D(Mat*, double);
 
 void save_diff_file_3D(Mat*, unsigned char);
 
 void save_diff_file_3D(Mat*, float);
 
-void save_diff_file_3D(Mat*, double);
-
 void save_diff_file_4D(Mat*, int, float);
 
-void save_diff_file_4D(Mat*, int, double);
+float* maximum(Mat*, int, int*, int);
 
-double* maximum(Mat*, int, int*, int);
+float* minimum(Mat*, int, int*, int);
 
-double* minimum(Mat*, int, int*, int);
+float* minimum(float*, float, int*, int);
 
-double* minimum(double*, double, int*, int);
+float* get_wh_in_nms(float*, float*, float, int);
 
-double* get_wh(double*, double*, double, int);
+float* get_inter(float*, float*, int);
 
-double* get_inter(double*, double*, int);
+float* get_o(float*, float*, int, int*, int);
 
-double* get_o(double*, double*, int, int*, int);
-
-Mat update_I(Mat*, double*, float);
+Mat update_I(Mat*, float*, float);
 
 short* get_pick_in_nms(short*, int);
 
-double* get_area(Mat*, Mat*, Mat*, Mat*, int);
+float* get_area(Mat*, Mat*, Mat*, Mat*, int);
 
 Mat get_boxes_from_pick(Mat*, short*, int);
 
 Mat append_total_boxes(Mat*, Mat*);
 
-double* mat_cols_sub(Mat, Mat);
+float* mat_cols_sub(Mat, Mat);
 
-double* get_qq(Mat*, int, int, double*);
+float* get_qq(Mat*, int, int, float*);
 
-Mat get_vstack_qq_and_transpose(double*, double*, double*, double*, Mat*, int);
+Mat get_vstack_qq_and_transpose(float*, float*, float*, float*, Mat*, int);
 
 void rerec(Mat*);
 
-void get_bboxA(Mat*, double*, double*, int);
+void get_bboxA(Mat*, float*, float*, int);
 
-Mat tile(double*, int, int, int);
+Mat tile(float*, int, int, int);
 
 void get_ret_rerec(Mat*, int, int, int, int, Mat*);
 
@@ -163,8 +142,6 @@ void buckle_map(Mat*, Mat*, int*, int*, int*, int*, int*, int*, int*, int*, int)
 
 void get_tempimg(Mat*, Mat*, int, int);
 
-Mat transpose3021(Mat*, int);
-
 int* get_ipass(Mat*, float, int, int*);
 
 Mat get_mv(Mat*, int*, int);
@@ -175,19 +152,19 @@ Mat transpose_mv_piack(Mat*, short*, int);
 
 void bbreg(Mat*, Mat*);
 
-void get_wh_in_bbreg(Mat*, double*, double*, int);
+void get_wh_in_bbreg(Mat*, float*, float*, int);
 
-void get_b_in_bbreg(Mat*, Mat*, double*, double*, double*, double*, double*, double*, int);
+void get_b_in_bbreg(Mat*, Mat*, float*, float*, float*, float*, float*, float*, int);
 
-void get_bbreg_return(Mat*, double*, double*, double*, double*, int);
+void get_bbreg_return(Mat*, float*, float*, float*, float*, int);
 
 Mat fix_total_boxes(Mat*);
 
 Mat get_points(Mat*, int*, int);
 
-void update_points(Mat*, Mat*, double*, double*, int);
+void update_points(Mat*, Mat*, float*, float*, int);
 
-double* get_o_Min(double*, double*, int);
+float* get_o_Min(float*, float*, int);
 
 Mat  points_pick(Mat*, short*, int);
 
@@ -195,8 +172,10 @@ Mat face_preprocess(Mat*, Mat*);
 
 void init_npu_device(GxDnnDevice*);
 
-void get_npu_input(Mat*, float**, int);
+Mat run_pnet(GxDnnDevice, float*, const char*);
 
-Mat run_net(GxDnnDevice, float*, const char*);
+Mat run_rnet(GxDnnDevice, float*, const char*, int);
+
+Mat run_onet(GxDnnDevice, float*, const char*, int);
 
 #endif

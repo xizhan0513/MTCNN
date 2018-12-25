@@ -7,13 +7,13 @@ Mat image_normalization(Mat* img, unsigned char type)
 {
     int i = 0, j = 0, k = 0;
     unsigned char* ptr_src = NULL;
-    double* ptr_dst = NULL;
-    Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC(img->channels()));
+    float* ptr_dst = NULL;
+    Mat ret_img = Mat::zeros(img->rows, img->cols, CV_32FC(img->channels()));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
             ptr_src = img->ptr<uchar>(i, j);
-            ptr_dst = ret_img.ptr<double>(i ,j);
+            ptr_dst = ret_img.ptr<float>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
                 *ptr_dst = (*ptr_src-127.5) * 0.0078125;
                 ptr_src++;
@@ -25,24 +25,32 @@ Mat image_normalization(Mat* img, unsigned char type)
     return ret_img;
 }
 
-void image_normalization(Mat* img, int len, double type)
+float* image_normalization(Mat* img, int len, float type)
 {
     int i = 0, j = 0, k = 0, v = 0;
-    double* ptr = NULL;
+    float* ptr = NULL;
+	float* ret_ptr = (float*)malloc(img->size().height * img->size().width * len * img->channels() * sizeof(float));
+	if (ret_ptr == NULL ) {
+		printf("malloc failed in %d lines\n", __LINE__);
+		return NULL;
+	}
+
+	float* tmp_ptr = ret_ptr;
 
     for (i = 0; i < img->size().height; i++) {
         for (j = 0; j < img->size().width; j++) {
             for (k = 0; k < len; k++) {
-				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
+				ptr = (float*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
 				for (v = 0; v < img->channels(); v++) {
-                *ptr = (*ptr - 127.5) * 0.0078125;
+                *tmp_ptr = (*ptr - 127.5) * 0.0078125;
                 ptr++;
+				tmp_ptr++;
 				}
             }
         }
     }
 
-    return ;
+    return ret_ptr;
 }
 
 Mat transpose_201(Mat* img, unsigned char type)
@@ -64,17 +72,17 @@ Mat transpose_201(Mat* img, unsigned char type)
     return image_normalization(&ret_img, type);
 }
 
-Mat transpose_201(Mat* img, double type)
+Mat transpose_201(Mat* img, float type)
 {
     int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
-    Mat ret_img = Mat::zeros(img->channels(), img->rows, CV_64FC(img->cols));
+    float* ptr = NULL;
+    Mat ret_img = Mat::zeros(img->channels(), img->rows, CV_32FC(img->cols));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
-            ptr = ret_img.ptr<double>(i, j);
+            ptr = ret_img.ptr<float>(i, j);
             for (k = 0; k < ret_img.channels(); k++) {
-				*ptr = *(img->ptr<double>(j, k) + i);
+				*ptr = *(img->ptr<float>(j, k) + i);
                 ptr++;
             }
         }
@@ -83,11 +91,11 @@ Mat transpose_201(Mat* img, double type)
     return ret_img;
 }
 
-Mat transpose_021(Mat* img, float type)
+Mat transpose_021(Mat* img)
 {
     int i = 0, j = 0, k = 0;
     float* ptr = NULL;
-    Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_64FC(img->cols));
+    Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_32FC(img->cols));
 
     for (i = 0; i < ret_img.rows; i++) {
         for (j = 0; j < ret_img.cols; j++) {
@@ -102,72 +110,30 @@ Mat transpose_021(Mat* img, float type)
     return ret_img;
 }
 
-Mat transpose_021(Mat* img, double type)
+Mat transpose3021(Mat* img, int len)
 {
-    int i = 0, j = 0, k = 0;
-    double* ptr = NULL;
-    Mat ret_img = Mat::zeros(img->rows, img->channels(), CV_64FC(img->cols));
+	int i = 0, j = 0, k = 0, v = 0;
+	float* ptr_dst = NULL;
 
-    for (i = 0; i < ret_img.rows; i++) {
-        for (j = 0; j < ret_img.cols; j++) {
-            ptr = ret_img.ptr<double>(i, j);
-            for (k = 0; k < ret_img.channels(); k++) {
-                *ptr = *(img->ptr<double>(i, k) + j);
-				ptr++;
-            }
-        }
-    }
+	int Mat_init_size[3] = {0};
+	Mat_init_size[0] = img->channels();
+	Mat_init_size[1] = img->size().height;
+	Mat_init_size[2] = len;
+	Mat ret_img = Mat(3, Mat_init_size, CV_32FC(img->size().width));
 
-    return ret_img;
-}
+	for (i = 0; i < ret_img.size().height; i++) {
+		for (j = 0; j < ret_img.size().width; j++) {
+			for (k = 0; k < Mat_init_size[2]; k++) {
+				ptr_dst = (float*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
+				for (v = 0; v < ret_img.channels(); v++) {
+					*ptr_dst = *(((float*)(img->data + img->step[0] * j + img->step[1] * v + img->step[2] * k)) + i);
+					ptr_dst++;
+				}
+			}
+		}
+	}
 
-Mat expand_dims(Mat* img)
-{
-    int i = 0, j = 0, k = 0, v = 0;
-    double* ptr_src = NULL;
-    double* ptr_dst = NULL;
-    int Mat_init_size[3] = {0};
-    Mat_init_size[0] = 1;
-    Mat_init_size[1] = img->rows;
-    Mat_init_size[2] = img->cols;
-
-    Mat ret_img = Mat(3, Mat_init_size, CV_64FC(img->channels()), Scalar::all(0));
-
-    for (i = 0; i < ret_img.size().height; i++) {
-        for (j = 0; j < ret_img.size().width; j++) {
-            for (k = 0; k < Mat_init_size[2]; k++) {
-                ptr_src = img->ptr<double>(j, k);
-                ptr_dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
-                for (v = 0; v < ret_img.channels(); v++) {
-                    *ptr_dst = *ptr_src;
-                    ptr_src++;
-                    ptr_dst++;
-                }
-            }
-        }
-    }
-
-    return ret_img;
-}
-
-Mat from_3DMat_select_rows(Mat* img, int index)
-{
-    int i = 0, j = 0;
-    float* ptr_src = NULL;
-    float* ptr_dst = NULL;
-    Mat ret_img = Mat::zeros(img->cols, img->channels(), CV_32FC1);
-
-    for (i = 0; i < ret_img.rows; i++) {
-        ptr_src = img->ptr<float>(index, i);
-        ptr_dst = ret_img.ptr<float>(i);
-        for (j = 0; j < ret_img.cols; j++) {
-            *ptr_dst = *ptr_src;
-            ptr_src++;
-            ptr_dst++;
-        }
-    }
-
-    return ret_img;
+	return ret_img;
 }
 
 Mat imresample(Mat* img, int hs, int ws, unsigned char type)
@@ -177,91 +143,51 @@ Mat imresample(Mat* img, int hs, int ws, unsigned char type)
     return transpose_201(&tmp_img, type);
 }
 
-Mat imresample(Mat* img, int hs, int ws, double type)
+Mat imresample(Mat* img, int hs, int ws, float type)
 {
     Mat tmp_img;
     resize(*img, tmp_img, Size(ws, hs), 0, 0, INTER_AREA);
 	return transpose_201(&tmp_img, type);
 }
 
-Mat get_img_y(Mat* img)
+float* get_img_y(Mat* img)
 {
-    Mat img_x = transpose_021(img, (double)1);
-    return expand_dims(&img_x);
-}
+	int i = 0, j = 0, k = 0;
+	float* ptr = NULL;
+    Mat img_x = transpose_021(img);
 
-Mat get_pnet_out(int* pnet_out_shape, const char* str, int flag)
-{
-    int i = 0, j = 0, k = 0;
-    float* ptr = NULL;
+	float* ret_ptr = (float*)malloc(img_x.rows * img_x.cols * img_x.channels() * sizeof(float));
+	if (ret_ptr == NULL) {
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
+	}
 
-    FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(flag == 0 ? pnet_out_shape[1] : (pnet_out_shape[1] - 2), pnet_out_shape[2], CV_32FC(pnet_out_shape[3]));
+	float* tmp_ptr = ret_ptr;
 
-    for (i = 0; i < ret_img.rows; i++) {
-        for (j = 0; j < ret_img.cols; j++) {
-            ptr = ret_img.ptr<float>(i, j);
-            for (k = 0; k < ret_img.channels(); k++) {
-                fread(ptr, 4, 1, f);
-                ptr++;
-            }
-        }
-    }
+	for (i = 0; i < img_x.rows; i++) {
+		for (j = 0; j < img_x.cols; j++) {
+			ptr = img_x.ptr<float>(i, j);
+			for (k = 0; k < img_x.channels(); k++) {
+				*tmp_ptr = *ptr;
+				tmp_ptr++;
+				ptr++;
+			}
+		}
+	}
 
-    return ret_img;
-}
-
-Mat get_rnet_out(int* pnet_out_shape, const char* str, int flag)
-{
-    int i = 0, j = 0, k = 0;
-    float* ptr = NULL;
-
-    FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(pnet_out_shape[0], flag == 0 ? pnet_out_shape[1] : (pnet_out_shape[1] - 2), CV_32FC1);
-
-    for (i = 0; i < ret_img.rows; i++) {
-        for (j = 0; j < ret_img.cols; j++) {
-            ptr = ret_img.ptr<float>(i, j);
-            for (k = 0; k < ret_img.channels(); k++) {
-                fread(ptr, 4, 1, f);
-                ptr++;
-            }
-        }
-    }
-
-    return ret_img;
-}
-
-Mat get_onet_out(int* pnet_out_shape, const char* str)
-{
-    int i = 0, j = 0, k = 0;
-    float* ptr = NULL;
-
-    FILE* f = fopen(str, "rb");
-    Mat ret_img = Mat::zeros(pnet_out_shape[0], pnet_out_shape[1], CV_32FC1);
-
-    for (i = 0; i < ret_img.rows; i++) {
-        for (j = 0; j < ret_img.cols; j++) {
-            ptr = ret_img.ptr<float>(i, j);
-            for (k = 0; k < ret_img.channels(); k++) {
-                fread(ptr, 4, 1, f);
-                ptr++;
-            }
-        }
-    }
-
-    return ret_img;
+	return ret_ptr;
 }
 
 Mat get_in0(Mat* img)
 {
-    return transpose_021(img, (float)1);
+    return transpose_021(img);
 }
 
 Mat get_in1(Mat* img)
 {
-    Mat tmp_img = transpose_021(img, (float)1);
-    return from_3DMat_select_rows(&tmp_img, 1);
+    Mat tmp_img = transpose_021(img);
+
+	return from_3DMat_select_rows(&tmp_img, 1);
 }
 
 int get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
@@ -270,7 +196,7 @@ int get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
     int count = 0;
     float* ptr = NULL;
 
-    for(i = 0; i < img->rows; i++) {
+    for (i = 0; i < img->rows; i++) {
         ptr = img->ptr<float>(i);
         for(j = 0; j < img->cols; j++) {
             if (*ptr >= t)
@@ -287,12 +213,10 @@ int get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
     *x = (int*)malloc(count * sizeof(int));
     *y = (int*)malloc(count * sizeof(int));
 	if (*x == NULL || *y == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
 	}
 
-    for(i = 0; i < img->rows; i++) {
+    for (i = 0; i < img->rows; i++) {
         ptr = img->ptr<float>(i);
         for(j = 0; j < img->cols; j++) {
             if (*ptr >= t) {
@@ -343,7 +267,7 @@ Mat get_vstack_in_gBB(Mat* dx1, Mat* dy1, Mat* dx2, Mat* dy2, int* y, int* x, in
     return ret_img;
 }
 
-Mat get_bb(int* y, int* x, int xy_len)
+Mat get_bb_in_gBB(int* y, int* x, int xy_len)
 {
     int i = 0;
     Mat ret_img = Mat::zeros(2, xy_len, CV_32SC1);
@@ -358,18 +282,18 @@ Mat get_bb(int* y, int* x, int xy_len)
     return ret_img;
 }
 
-Mat get_q1(Mat* img, int stride, double scale, int xy_len)
+Mat get_q1(Mat* img, int stride, float scale, int xy_len)
 {
     int i = 0, j = 0;
 	int tmp_var = 0;
     int* ptr_src = NULL;
-    double* ptr_dst = NULL;
+    float* ptr_dst = NULL;
 
-    Mat ret_img = Mat::zeros(xy_len, 2, CV_64FC1);
+    Mat ret_img = Mat::zeros(xy_len, 2, CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
         ptr_src = img->ptr<int>(i);
-        ptr_dst = ret_img.ptr<double>(i);
+        ptr_dst = ret_img.ptr<float>(i);
         for (j = 0; j < ret_img.cols; j++) {
             tmp_var = (stride * (*ptr_src) + 1) / scale;
 			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
@@ -381,18 +305,18 @@ Mat get_q1(Mat* img, int stride, double scale, int xy_len)
     return ret_img;
 }
 
-Mat get_q2(Mat* img, int stride, double scale, int cellsize, int xy_len)
+Mat get_q2(Mat* img, int stride, float scale, int cellsize, int xy_len)
 {
     int i = 0, j = 0;
 	int tmp_var = 0;
     int* ptr_src = NULL;
-    double* ptr_dst = NULL;
+    float* ptr_dst = NULL;
 
-    Mat ret_img = Mat::zeros(xy_len, 2, CV_64FC1);
+    Mat ret_img = Mat::zeros(xy_len, 2, CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
         ptr_src = img->ptr<int>(i);
-        ptr_dst = ret_img.ptr<double>(i);
+        ptr_dst = ret_img.ptr<float>(i);
         for (j = 0; j < ret_img.cols; j++) {
             tmp_var = (stride * (*ptr_src) + cellsize - 1 + 1) / scale;
 			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
@@ -407,18 +331,18 @@ Mat get_q2(Mat* img, int stride, double scale, int cellsize, int xy_len)
 Mat get_hstack_pnet(Mat* q1, Mat* q2, Mat* score, Mat* vstack, int xy_len)
 {
     int i = 0, j = 0;
-    double* ptr = NULL;
+    float* ptr = NULL;
 
-    Mat ret_img = Mat::zeros(xy_len, 9, CV_64FC1);
+    Mat ret_img = Mat::zeros(xy_len, 9, CV_32FC1);
 
     for (i = 0; i < ret_img.rows; i++) {
-        ptr = ret_img.ptr<double>(i);
+        ptr = ret_img.ptr<float>(i);
         for (j = 0; j < ret_img.cols; j++) {
             if (j < q1->cols) {
-                *ptr = *(q1->ptr<double>(i, j));
+                *ptr = *(q1->ptr<float>(i, j));
             }
             if (q1->cols <= j && j < (q2->cols + q1->cols)) {
-                *ptr = *(q2->ptr<double>(i, j - q1->cols));
+                *ptr = *(q2->ptr<float>(i, j - q1->cols));
             }
             if ((q1->cols + q2->cols) <= j && j < (score->cols + q2->cols + q1->cols)) {
                 *ptr = *(score->ptr<float>(i, j - q2->cols - q1->cols));
@@ -433,7 +357,27 @@ Mat get_hstack_pnet(Mat* q1, Mat* q2, Mat* score, Mat* vstack, int xy_len)
     return ret_img;
 }
 
-Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
+Mat from_3DMat_select_rows(Mat* img, int index)
+{
+    int i = 0, j = 0;
+    float* ptr_src = NULL;
+    float* ptr_dst = NULL;
+    Mat ret_img = Mat::zeros(img->cols, img->channels(), CV_32FC1);
+
+    for (i = 0; i < ret_img.rows; i++) {
+        ptr_src = img->ptr<float>(index, i);
+        ptr_dst = ret_img.ptr<float>(i);
+        for (j = 0; j < ret_img.cols; j++) {
+            *ptr_dst = *ptr_src;
+            ptr_src++;
+            ptr_dst++;
+        }
+    }
+
+    return ret_img;
+}
+
+Mat generateBoundingBox(Mat* imap, Mat* reg, float scale, float t)
 {
     int stride = 2;
     int cellsize = 12;
@@ -455,7 +399,7 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
     int ret = get_xy(imap, &x, &y, t, &xy_len);
 
 	if (ret != 0) {
-		Mat ret_img = Mat::zeros(0, 0, CV_64FC1);
+		Mat ret_img = Mat::zeros(0, 0, CV_32FC1);
 		return ret_img;
 	}
 
@@ -471,10 +415,10 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
     transpose(vstack, vstack);
 
 	if (vstack.rows * vstack.cols == 0) {
-		*reg = Mat::zeros(1, 3, CV_64FC1);
+		*reg = Mat::zeros(1, 3, CV_32FC1);
     }
 
-    Mat bb = get_bb(y, x, xy_len);
+    Mat bb = get_bb_in_gBB(y, x, xy_len);
     transpose(bb, bb);
 
     Mat q1 = get_q1(&bb, stride, scale, xy_len);
@@ -488,18 +432,17 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, double scale, float t)
     return ret_img;
 }
 
-double* get_area(Mat* x1, Mat* y1, Mat* x2, Mat* y2, int len)
+float* get_area(Mat* x1, Mat* y1, Mat* x2, Mat* y2, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
-        ret_ptr[i] = (*(x2->ptr<double>(i)) - *(x1->ptr<double>(i)) + 1) * (*(y2->ptr<double>(i)) - *(y1->ptr<double>(i)) + 1);
+        ret_ptr[i] = (*(x2->ptr<float>(i)) - *(x1->ptr<float>(i)) + 1) * (*(y2->ptr<float>(i)) - *(y1->ptr<float>(i)) + 1);
     }
 
     return ret_ptr;
@@ -510,9 +453,8 @@ int* get_idx(Mat* I)
     int i = 0;
     int* ret_ptr = (int*)malloc((I->rows - 1) * sizeof(int));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < (I->rows - 1); i++) {
@@ -522,56 +464,53 @@ int* get_idx(Mat* I)
     return ret_ptr;
 }
 
-double* maximum(Mat* x1, int cmp_idx, int* idx, int len)
+float* maximum(Mat* x1, int cmp_idx, int* idx, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
-        if (*(x1->ptr<double>(cmp_idx)) >= *(x1->ptr<double>(idx[i]))) {
-            ret_ptr[i] = *(x1->ptr<double>(cmp_idx));
+        if (*(x1->ptr<float>(cmp_idx)) >= *(x1->ptr<float>(idx[i]))) {
+            ret_ptr[i] = *(x1->ptr<float>(cmp_idx));
         }else {
-            ret_ptr[i] = *(x1->ptr<double>(idx[i]));
+            ret_ptr[i] = *(x1->ptr<float>(idx[i]));
         }
     }
 
     return ret_ptr;
 }
 
-double* minimum(Mat* x1, int cmp_idx, int* idx, int len)
+float* minimum(Mat* x1, int cmp_idx, int* idx, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
-        if (*(x1->ptr<double>(cmp_idx)) <= *(x1->ptr<double>(idx[i]))) {
-            ret_ptr[i] = *(x1->ptr<double>(cmp_idx));
+        if (*(x1->ptr<float>(cmp_idx)) <= *(x1->ptr<float>(idx[i]))) {
+            ret_ptr[i] = *(x1->ptr<float>(cmp_idx));
         }else {
-            ret_ptr[i] = *(x1->ptr<double>(idx[i]));
+            ret_ptr[i] = *(x1->ptr<float>(idx[i]));
         }
     }
 
     return ret_ptr;
 }
 
-double* minimum(double* x1, double cmp, int* idx, int len)
+float* minimum(float* x1, float cmp, int* idx, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
@@ -585,14 +524,13 @@ double* minimum(double* x1, double cmp, int* idx, int len)
     return ret_ptr;
 }
 
-double* get_wh(double* xx1, double* xx2, double cmp, int len)
+float* get_wh_in_nms(float* xx1, float* xx2, float cmp, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
@@ -605,14 +543,13 @@ double* get_wh(double* xx1, double* xx2, double cmp, int len)
     return ret_ptr;
 }
 
-double* get_inter(double* w, double* h, int len)
+float* get_inter(float* w, float* h, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
@@ -622,14 +559,13 @@ double* get_inter(double* w, double* h, int len)
     return ret_ptr;
 }
 
-double* get_o(double* inter, double* area, int x, int* idx, int len)
+float* get_o(float* inter, float* area, int x, int* idx, int len)
 {
     int i = 0;
-    double* ret_ptr = (double*)malloc(len * sizeof(double));
+    float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
     for (i = 0; i < len; i++) {
@@ -642,7 +578,7 @@ double* get_o(double* inter, double* area, int x, int* idx, int len)
     return ret_ptr;
 }
 
-Mat update_I(Mat* I, double* o, float threshold)
+Mat update_I(Mat* I, float* o, float threshold)
 {
     int i = 0, j = 0;
     int count = 0;
@@ -674,9 +610,8 @@ short* get_pick_in_nms(short* pick, int counter)
 	int i = 0;
 	short* ret_ptr = (short*)malloc(counter * sizeof(short));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
 	for (i = 0; i < counter; i++) {
@@ -702,7 +637,7 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
 	Mat y2 = img->colRange(3, 4).clone();
 	Mat s = img->colRange(4, 5).clone();
 
-    double* area = get_area(&x1, &y1, &x2, &y2, len);
+    float* area = get_area(&x1, &y1, &x2, &y2, len);
 
 	Mat I;
 	sortIdx(s, I, CV_SORT_EVERY_COLUMN + CV_SORT_ASCENDING);
@@ -715,19 +650,19 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
 
         int* idx = get_idx(&I);
 
-		double* xx1 = maximum(&x1, i, idx, len);
-        double* yy1 = maximum(&y1, i, idx, len);
-        double* xx2 = minimum(&x2, i, idx, len);
-        double* yy2 = minimum(&y2, i, idx, len);
+		float* xx1 = maximum(&x1, i, idx, len);
+        float* yy1 = maximum(&y1, i, idx, len);
+        float* xx2 = minimum(&x2, i, idx, len);
+        float* yy2 = minimum(&y2, i, idx, len);
 
-		double* w = get_wh(xx1, xx2, 0.0, len);
-        double* h = get_wh(yy1, yy2, 0.0, len);
+		float* w = get_wh_in_nms(xx1, xx2, 0.0, len);
+        float* h = get_wh_in_nms(yy1, yy2, 0.0, len);
 
-        double* inter = get_inter(w, h, len);
+        float* inter = get_inter(w, h, len);
 
-        double* o = NULL;
+        float* o = NULL;
 		if (!strcmp(method, "Min")) {
-			double* tmp = minimum(area, area[i], idx, len);
+			float* tmp = minimum(area, area[i], idx, len);
 			o = get_o_Min(inter, tmp, len);
 			free(tmp);
 		}else {
@@ -757,14 +692,14 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
 Mat get_boxes_from_pick(Mat* img, short* pick, int pick_len)
 {
 	int i = 0, j = 0;
-	double* ptr_src = NULL;
-	double* ptr_dst = NULL;
+	float* ptr_src = NULL;
+	float* ptr_dst = NULL;
 
-	Mat ret_img = Mat::zeros(pick_len, img->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros(pick_len, img->cols, CV_32FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
-		ptr_src = img->ptr<double>(pick[i]);
-		ptr_dst = ret_img.ptr<double>(i);
+		ptr_src = img->ptr<float>(pick[i]);
+		ptr_dst = ret_img.ptr<float>(i);
 		for (j = 0; j < ret_img.cols; j++) {
 			*ptr_dst = *ptr_src;
 			ptr_src++;
@@ -778,18 +713,18 @@ Mat get_boxes_from_pick(Mat* img, short* pick, int pick_len)
 Mat append_total_boxes(Mat* total_boxes, Mat* boxes)
 {
 	int i = 0, j = 0;
-	double* ptr_src = NULL;
-	double* ptr_dst = NULL;
+	float* ptr_src = NULL;
+	float* ptr_dst = NULL;
 
-	Mat ret_img = Mat::zeros((total_boxes->rows + boxes->rows), boxes->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros((total_boxes->rows + boxes->rows), boxes->cols, CV_32FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
 		if (i < total_boxes->rows) {
-			ptr_src = total_boxes->ptr<double>(i);
+			ptr_src = total_boxes->ptr<float>(i);
 		} else {
-			ptr_src = boxes->ptr<double>(i - total_boxes->rows);
+			ptr_src = boxes->ptr<float>(i - total_boxes->rows);
 		}
-		ptr_dst = ret_img.ptr<double>(i);
+		ptr_dst = ret_img.ptr<float>(i);
 		for (j = 0; j < ret_img.cols; j++) {
 			*ptr_dst = *ptr_src;
 			ptr_src++;
@@ -800,83 +735,81 @@ Mat append_total_boxes(Mat* total_boxes, Mat* boxes)
 	return ret_img;
 }
 
-double* mat_cols_sub(Mat subed, Mat sub)
+float* mat_cols_sub(Mat subed, Mat sub)
 {
 	int i = 0;
-	double* ret_ptr = (double*)malloc(subed.rows * sizeof(double));
+	float* ret_ptr = (float*)malloc(subed.rows * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
 	for (i = 0; i < subed.rows; i++) {
-		ret_ptr[i] = *(subed.ptr<double>(i)) - *(sub.ptr<double>(i));
+		ret_ptr[i] = *(subed.ptr<float>(i)) - *(sub.ptr<float>(i));
 	}
 
 	return ret_ptr;
 }
 
-double* get_qq(Mat* img, int x, int y, double* reg)
+float* get_qq(Mat* img, int x, int y, float* reg)
 {
 	int i = 0;
-	double* ret_ptr = (double*)malloc(img->rows * sizeof(double));
+	float* ret_ptr = (float*)malloc(img->rows * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
 	for (i = 0; i < img->rows; i++) {
-		ret_ptr[i] = *(img->ptr<double>(i, x)) + *(img->ptr<double>(i, y)) * reg[i];
+		ret_ptr[i] = *(img->ptr<float>(i, x)) + *(img->ptr<float>(i, y)) * reg[i];
 	}
 
 	return ret_ptr;
 }
 
-Mat get_vstack_qq_and_transpose(double* qq1, double* qq2, double* qq3, double* qq4, Mat* total_boxes, int index)
+Mat get_vstack_qq_and_transpose(float* qq1, float* qq2, float* qq3, float* qq4, Mat* total_boxes, int index)
 {
 	int i = 0;
-	Mat ret_img = Mat::zeros(total_boxes->rows, 5, CV_64FC1);
+	Mat ret_img = Mat::zeros(total_boxes->rows, 5, CV_32FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 0))= qq1[i];
+		*(ret_img.ptr<float>(i, 0))= qq1[i];
 	}
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 1))= qq2[i];
+		*(ret_img.ptr<float>(i, 1))= qq2[i];
 	}
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 2))= qq3[i];
+		*(ret_img.ptr<float>(i, 2))= qq3[i];
 	}
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 3))= qq4[i];
+		*(ret_img.ptr<float>(i, 3))= qq4[i];
 	}
 	for (i = 0; i < ret_img.rows; i++) {
-		*(ret_img.ptr<double>(i, 4))= *(total_boxes->ptr<double>(i, index));
+		*(ret_img.ptr<float>(i, 4))= *(total_boxes->ptr<float>(i, index));
 	}
 
 	return ret_img;
 }
 
-void get_bboxA(Mat* img, double* x, double* y, int index)
+void get_bboxA(Mat* img, float* x, float* y, int index)
 {
 	int i = 0;
 
 	for (i = 0; i < img->rows; i++) {
-		*(img->ptr<double>(i, index)) = *(img->ptr<double>(i, index)) + x[i] * 0.5 - y[i] * 0.5;
+		*(img->ptr<float>(i, index)) = *(img->ptr<float>(i, index)) + x[i] * 0.5 - y[i] * 0.5;
 	}
 
 	return ;
 }
 
-Mat tile(double* l, int y, int x, int len)
+Mat tile(float* l, int y, int x, int len)
 {
 	int i = 0, j = 0;
-	double* ptr = NULL;
-	Mat ret_img = Mat::zeros(y, len * x, CV_64FC1);
+	float* ptr = NULL;
+	Mat ret_img = Mat::zeros(y, len * x, CV_32FC1);
 
 	for (i = 0; i < ret_img.rows; i++) {
-			ptr = ret_img.ptr<double>(i);
+		ptr = ret_img.ptr<float>(i);
 		for (j = 0; j < ret_img.cols; j++) {
 			*ptr = l[j];
 			ptr++;
@@ -891,14 +824,14 @@ Mat tile(double* l, int y, int x, int len)
 void get_ret_rerec(Mat* img, int xs, int xe, int ys, int ye, Mat* tmp)
 {
 	int i = 0, j = 0;
-	double* ptr_src = NULL;
-	double* ptr_dst = NULL;
+	float* ptr_src = NULL;
+	float* ptr_dst = NULL;
 
 	for (i = 0; i < img->rows; i++) {
-		ptr_src = img->ptr<double>(i, xs);
-		ptr_dst = img->ptr<double>(i, ys);
+		ptr_src = img->ptr<float>(i, xs);
+		ptr_dst = img->ptr<float>(i, ys);
 		for (j = 0; j < (xe-xs); j++) {
-			*ptr_dst = *ptr_src + *(tmp->ptr<double>(i, j));
+			*ptr_dst = *ptr_src + *(tmp->ptr<float>(i, j));
 			ptr_src++;
 			ptr_dst++;
 		}
@@ -910,15 +843,15 @@ void get_ret_rerec(Mat* img, int xs, int xe, int ys, int ye, Mat* tmp)
 void rerec(Mat* img)
 {
 	int i = 0;
-	double* h = mat_cols_sub(img->colRange(3, 4), img->colRange(1, 2));
-	double* w = mat_cols_sub(img->colRange(2, 3), img->colRange(0, 1));
+	float* h = mat_cols_sub(img->colRange(3, 4), img->colRange(1, 2));
+	float* w = mat_cols_sub(img->colRange(2, 3), img->colRange(0, 1));
 
-	double* l = (double*)malloc(img->rows * sizeof(double));
+	float* l = (float*)malloc(img->rows * sizeof(float));
 	if (l == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ;
 	}
+
 	for (i = 0; i < img->rows; i++) {
 		l[i] = (h[i] >= w[i] ? h[i] : w[i]);
 	}
@@ -941,12 +874,12 @@ void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
 {
 	int i = 0, j = 0;
 	int tmp_var = 0;
-	double* ptr_src = NULL;
-	double* ptr_dst = NULL;
+	float* ptr_src = NULL;
+	float* ptr_dst = NULL;
 
 	for (i = 0; i < img->rows; i++) {
-		ptr_src = img->ptr<double>(i, xs);
-		ptr_dst = img->ptr<double>(i, ys);
+		ptr_src = img->ptr<float>(i, xs);
+		ptr_dst = img->ptr<float>(i, ys);
 		for (j = 0; j < (xe - xs); j++) {
 			tmp_var = *ptr_src;
 			*ptr_dst = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
@@ -963,7 +896,7 @@ void get_tmpwh(Mat* img, int* tmp, int x, int y)
 	int i = 0;
 
 	for (i = 0; i < img->rows; i++) {
-		tmp[i] = *(img->ptr<double>(i, x)) - *(img->ptr<double>(i, y)) + 1;
+		tmp[i] = *(img->ptr<float>(i, x)) - *(img->ptr<float>(i, y)) + 1;
 	}
 
 	return ;
@@ -988,16 +921,16 @@ void init_x_y_ex_ey(Mat* img, int* x, int* y, int* ex, int* ey)
 	int i = 0;;
 
 	for (i = 0; i < img->rows; i++) {
-		x[i] = *(img->ptr<double>(i, 0));
+		x[i] = *(img->ptr<float>(i, 0));
 	}
 	for (i = 0; i < img->rows; i++) {
-		y[i] = *(img->ptr<double>(i, 1));
+		y[i] = *(img->ptr<float>(i, 1));
 	}
 	for (i = 0; i < img->rows; i++) {
-		ex[i] = *(img->ptr<double>(i, 2));
+		ex[i] = *(img->ptr<float>(i, 2));
 	}
 	for (i = 0; i < img->rows; i++) {
-		ey[i] = *(img->ptr<double>(i, 3));
+		ey[i] = *(img->ptr<float>(i, 3));
 	}
 
 	return ;
@@ -1063,12 +996,12 @@ void buckle_map(Mat* img, Mat* tmp, int* x, int* ex, int* y, int* ey, int* dx, i
 {
 	int i = 0, j = 0, v = 0;
 	uchar* src = NULL;
-	double* dst = NULL;
+	float* dst = NULL;
 
 	for (i = 0; i < (ey[k] - y[k] + 1); i++) {
 		for (j = 0; j < (ex[k] - x[k] + 1); j++) {
 			src = img->ptr<uchar>((y[k] - 1 + i), (x[k] - 1 + j));
-			dst = tmp->ptr<double>((dy[k] - 1 + i), (dx[k] - 1 + j));
+			dst = tmp->ptr<float>((dy[k] - 1 + i), (dx[k] - 1 + j));
 			for (v = 0; v < img->channels(); v++) {
 				*dst = *src;
 				src++;
@@ -1083,12 +1016,12 @@ void buckle_map(Mat* img, Mat* tmp, int* x, int* ex, int* y, int* ey, int* dx, i
 void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
 {
 	int i = 0, j = 0, v = 0;
-	double* ptr_src = NULL;
-	double* ptr_dst = (double*)tempimg->data + k;
+	float* ptr_src = NULL;
+	float* ptr_dst = (float*)tempimg->data + k;
 
 	for (i = 0; i < tempimg->size().height; i++) {
 		for (j = 0; j < tempimg->size().width; j++) {
-			ptr_src = tmp_tempimg->ptr<double>(i, j);
+			ptr_src = tmp_tempimg->ptr<float>(i, j);
 			for (v = 0; v < len; v++) {
 				*ptr_dst = *ptr_src;
 				ptr_src++;
@@ -1098,32 +1031,6 @@ void get_tempimg(Mat* tempimg, Mat* tmp_tempimg, int k, int len)
 	}
 
 	return ;
-}
-
-Mat transpose3021(Mat* img, int len)
-{
-	int i = 0, j = 0, k = 0, v = 0;
-	double* ptr_dst = NULL;
-
-	int Mat_init_size[3] = {0};
-	Mat_init_size[0] = img->channels();
-	Mat_init_size[1] = img->size().height;
-	Mat_init_size[2] = len;
-	Mat ret_img = Mat(3, Mat_init_size, CV_64FC(img->size().width));
-
-	for (i = 0; i < ret_img.size().height; i++) {
-		for (j = 0; j < ret_img.size().width; j++) {
-			for (k = 0; k < Mat_init_size[2]; k++) {
-				ptr_dst = (double*)(ret_img.data + ret_img.step[0] * i + ret_img.step[1] * j + ret_img.step[2] * k);
-				for (v = 0; v < ret_img.channels(); v++) {
-					*ptr_dst = *(((double*)(img->data + img->step[0] * j + img->step[1] * v + img->step[2] * k)) + i);
-					ptr_dst++;
-				}
-			}
-		}
-	}
-
-	return ret_img;
 }
 
 int* get_ipass(Mat* score, float threshold, int len, int* ipass_len)
@@ -1144,9 +1051,8 @@ int* get_ipass(Mat* score, float threshold, int len, int* ipass_len)
 	*ipass_len = count;
 	int* ret_ptr = (int*)malloc(count * sizeof(int));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
 	int* tmp_ptr = ret_ptr;
@@ -1168,14 +1074,14 @@ Mat get_hstack_ronet(Mat* img, int* ipass, int x, int y, Mat* score, int ipass_l
 	int i = 0, j = 0;
 	float* ptr = score->ptr<float>(0);
 
-	Mat ret_img = Mat::zeros(ipass_len, img->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros(ipass_len, img->cols, CV_32FC1);
 
 	for(i = 0; i < ret_img.rows; i++) {
 		for (j = 0; j < ret_img.cols; j++) {
 			if (x <= j && j < y) {
-				*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(ipass[i], j));
+				*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(ipass[i], j));
 			} else {
-				*(ret_img.ptr<double>(i, j)) = *(ptr + ipass[i]);
+				*(ret_img.ptr<float>(i, j)) = *(ptr + ipass[i]);
 			}
 		}
 	}
@@ -1201,11 +1107,11 @@ Mat get_mv(Mat* img, int* ipass, int ipass_len)
 Mat get_total_boxes_pick(Mat* img, short* pick, int len)
 {
 	int i = 0, j = 0;
-	Mat ret_img = Mat::zeros(len, img->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros(len, img->cols, CV_32FC1);
 
 	for (i = 0; i < len; i++) {
 		for (j = 0; j < ret_img.cols; j++) {
-			*(ret_img.ptr<double>(i, j)) = *(img->ptr<double>(pick[i], j));
+			*(ret_img.ptr<float>(i, j)) = *(img->ptr<float>(pick[i], j));
 		}
 	}
 
@@ -1227,46 +1133,46 @@ Mat transpose_mv_piack(Mat* img, short* pick, int len)
 	return ret_img;
 }
 
-void get_wh_in_bbreg(Mat* img, double* w, double* h, int len)
+void get_wh_in_bbreg(Mat* img, float* w, float* h, int len)
 {
 	int i = 0;
 	for (i = 0; i < len; i++) {
-		w[i] = *(img->ptr<double>(i, 2)) - *(img->ptr<double>(i, 0)) + 1;
-		h[i] = *(img->ptr<double>(i, 3)) - *(img->ptr<double>(i, 1)) + 1;
+		w[i] = *(img->ptr<float>(i, 2)) - *(img->ptr<float>(i, 0)) + 1;
+		h[i] = *(img->ptr<float>(i, 3)) - *(img->ptr<float>(i, 1)) + 1;
 	}
 
 	return ;
 }
 
-void get_b_in_bbreg(Mat* img, Mat* mv, double* b1, double* b2, double* b3, double* b4, double* w, double* h, int len)
+void get_b_in_bbreg(Mat* img, Mat* mv, float* b1, float* b2, float* b3, float* b4, float* w, float* h, int len)
 {
 	int i = 0;
 	for (i = 0; i < len; i++) {
-		b1[i] = *(img->ptr<double>(i, 0)) + *(mv->ptr<float>(i, 0)) * w[i];
-		b2[i] = *(img->ptr<double>(i, 1)) + *(mv->ptr<float>(i, 1)) * h[i];
-		b3[i] = *(img->ptr<double>(i, 2)) + *(mv->ptr<float>(i, 2)) * w[i];
-		b4[i] = *(img->ptr<double>(i, 3)) + *(mv->ptr<float>(i, 3)) * h[i];
+		b1[i] = *(img->ptr<float>(i, 0)) + *(mv->ptr<float>(i, 0)) * w[i];
+		b2[i] = *(img->ptr<float>(i, 1)) + *(mv->ptr<float>(i, 1)) * h[i];
+		b3[i] = *(img->ptr<float>(i, 2)) + *(mv->ptr<float>(i, 2)) * w[i];
+		b4[i] = *(img->ptr<float>(i, 3)) + *(mv->ptr<float>(i, 3)) * h[i];
 	}
 
 	return ;
 }
 
-void get_bbreg_return(Mat* img, double* b1, double* b2, double* b3, double* b4, int len)
+void get_bbreg_return(Mat* img, float* b1, float* b2, float* b3, float* b4, int len)
 {
 	int i = 0, j = 0;
-	Mat tmp = Mat::zeros(4, len, CV_64FC1);
+	Mat tmp = Mat::zeros(4, len, CV_32FC1);
 	for (i = 0; i < tmp.cols; i++) {
-		*(tmp.ptr<double>(0, i)) = b1[i];
-		*(tmp.ptr<double>(1, i)) = b2[i];
-		*(tmp.ptr<double>(2, i)) = b3[i];
-		*(tmp.ptr<double>(3, i)) = b4[i];
+		*(tmp.ptr<float>(0, i)) = b1[i];
+		*(tmp.ptr<float>(1, i)) = b2[i];
+		*(tmp.ptr<float>(2, i)) = b3[i];
+		*(tmp.ptr<float>(3, i)) = b4[i];
 	}
 
 	transpose(tmp, tmp);
 
 	for (i = 0; i < tmp.rows; i++) {
 		for (j = 0; j < 4; j++) {
-			*(img->ptr<double>(i, j)) = *(tmp.ptr<double>(i, j));
+			*(img->ptr<float>(i, j)) = *(tmp.ptr<float>(i, j));
 		}
 	}
 
@@ -1281,16 +1187,15 @@ void bbreg(Mat* boundingbox, Mat* reg)
 
 	int len = reg->rows;
 
-	double* w = (double*)malloc(len * sizeof(double));
-	double* h = (double*)malloc(len * sizeof(double));
-	double* b1 = (double*)malloc(len * sizeof(double));
-	double* b2 = (double*)malloc(len * sizeof(double));
-	double* b3 = (double*)malloc(len * sizeof(double));
-	double* b4 = (double*)malloc(len * sizeof(double));
+	float* w = (float*)malloc(len * sizeof(float));
+	float* h = (float*)malloc(len * sizeof(float));
+	float* b1 = (float*)malloc(len * sizeof(float));
+	float* b2 = (float*)malloc(len * sizeof(float));
+	float* b3 = (float*)malloc(len * sizeof(float));
+	float* b4 = (float*)malloc(len * sizeof(float));
 	if (w == NULL || h == NULL || b1 == NULL || b2 == NULL || b3 == NULL || b4 == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return ;
 	}
 
 	get_wh_in_bbreg(boundingbox, w, h, len);
@@ -1311,11 +1216,11 @@ Mat fix_total_boxes(Mat* img)
 {
 	int i = 0, j = 0;
 	int tmp_var = 0;
-	Mat ret_img = Mat::zeros(img->rows, img->cols, CV_64FC1);
+	Mat ret_img = Mat::zeros(img->rows, img->cols, CV_32FC1);
 	for (i = 0; i < img->rows; i++) {
 		for (j = 0; j < img->cols; j++) {
-			tmp_var = *(img->ptr<double>(i, j));
-			*(ret_img.ptr<double>(i, j)) = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
+			tmp_var = *(img->ptr<float>(i, j));
+			*(ret_img.ptr<float>(i, j)) = tmp_var > 0 ? floor(tmp_var) : ceil(tmp_var);
 		}
 	}
 
@@ -1336,28 +1241,27 @@ Mat get_points(Mat* img, int* ipass, int len)
 	return ret_img;
 }
 
-void update_points(Mat* img, Mat* total_boxes, double* w, double* h, int len)
+void update_points(Mat* img, Mat* total_boxes, float* w, float* h, int len)
 {
 	int i = 0, j = 0;
 
 	for (i = 0; i < 5; i++) {
 		for (j = 0; j < len; j++) {
-			*(img->ptr<float>(i, j)) = (w[j] * *(img->ptr<float>(i, j))) + (*(total_boxes->ptr<double>(j, 0)) - 1);
-			*(img->ptr<float>(i + 5, j)) = (h[j] * *(img->ptr<float>(i + 5, j))) + (*(total_boxes->ptr<double>(j, 1)) - 1);
+			*(img->ptr<float>(i, j)) = (w[j] * *(img->ptr<float>(i, j))) + (*(total_boxes->ptr<float>(j, 0)) - 1);
+			*(img->ptr<float>(i + 5, j)) = (h[j] * *(img->ptr<float>(i + 5, j))) + (*(total_boxes->ptr<float>(j, 1)) - 1);
 		}
 	}
 
 	return ;
 }
 
-double* get_o_Min(double* inter, double* tmp, int len)
+float* get_o_Min(float* inter, float* tmp, int len)
 {
 	int i = 0;
-	double* ret_ptr = (double*)malloc(len * sizeof(double));
+	float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
+		printf("malloc failed in %d lines!\n", __LINE__);
+		return NULL;
 	}
 
 	for (i = 0; i < len; i++) {
@@ -1416,33 +1320,4 @@ Mat face_preprocess(Mat* img, Mat* landmark)
 #endif
 
 	return ret_img;
-}
-
-void get_npu_input(Mat* img, float** input, int len)
-{
-	int i = 0, j = 0, k = 0, v = 0;
-	double* ptr = NULL;
-	int count = 0;
-
-	*input = (float*)malloc(img->size().height * img->size().width * len * img->channels() * sizeof(float));
-	if (*input == NULL) {
-		printf("*********************************\n");
-		printf("****malloc error in line %d****\n", __LINE__);
-		printf("*********************************\n");
-	}
-
-	for (i = 0; i < img->size().height; i++) {
-		for (j = 0; j < img->size().width; j++) {
-			for (k = 0; k < len; k++) {
-				ptr = (double*)(img->data + img->step[0] * i + img->step[1] * j + img->step[2] * k);
-				for (v = 0; v < img->channels(); v++) {
-					(*input)[count] = (float)*ptr;
-					ptr++;
-					count++;
-				}
-			}
-		}
-	}
-
-	return ;
 }
