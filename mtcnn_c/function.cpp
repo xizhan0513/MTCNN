@@ -31,7 +31,7 @@ float* image_normalization(Mat* img, int len, float type)
     float* ptr = NULL;
 	float* ret_ptr = (float*)malloc(img->size().height * img->size().width * len * img->channels() * sizeof(float));
 	if (ret_ptr == NULL ) {
-		printf("malloc failed in %d lines\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -158,7 +158,7 @@ float* get_img_y(Mat* img)
 
 	float* ret_ptr = (float*)malloc(img_x.rows * img_x.cols * img_x.channels() * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -211,9 +211,15 @@ int get_xy(Mat* img, int** x, int** y, float t, int* xy_len)
     *xy_len = count;
 
     *x = (int*)malloc(count * sizeof(int));
+	if (*x == NULL) {
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+		return -1;
+	}
     *y = (int*)malloc(count * sizeof(int));
-	if (*x == NULL || *y == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+	if (*y == NULL) {
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+		free(*x);
+		return -1;
 	}
 
     for (i = 0; i < img->rows; i++) {
@@ -399,7 +405,7 @@ Mat generateBoundingBox(Mat* imap, Mat* reg, float scale, float t)
     int ret = get_xy(imap, &x, &y, t, &xy_len);
 
 	if (ret != 0) {
-		Mat ret_img = Mat::zeros(0, 0, CV_32FC1);
+		Mat ret_img = Mat::zeros(0, 0, CV_8UC1);
 		return ret_img;
 	}
 
@@ -437,7 +443,7 @@ float* get_area(Mat* x1, Mat* y1, Mat* x2, Mat* y2, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -453,7 +459,7 @@ int* get_idx(Mat* I)
     int i = 0;
     int* ret_ptr = (int*)malloc((I->rows - 1) * sizeof(int));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -469,7 +475,7 @@ float* maximum(Mat* x1, int cmp_idx, int* idx, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -489,7 +495,7 @@ float* minimum(Mat* x1, int cmp_idx, int* idx, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -509,7 +515,7 @@ float* minimum(float* x1, float cmp, int* idx, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -529,7 +535,7 @@ float* get_wh_in_nms(float* xx1, float* xx2, float cmp, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -548,7 +554,7 @@ float* get_inter(float* w, float* h, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -564,7 +570,7 @@ float* get_o(float* inter, float* area, int x, int* idx, int len)
     int i = 0;
     float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -610,7 +616,7 @@ short* get_pick_in_nms(short* pick, int counter)
 	int i = 0;
 	short* ret_ptr = (short*)malloc(counter * sizeof(short));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -630,6 +636,18 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
     int counter = 0;
     int len = img->rows;
     short pick[len] = {0};
+	Mat I;
+
+	float* area = NULL;
+	int* idx = NULL;
+	float* xx1 = NULL;
+	float* yy1 = NULL;
+	float* xx2 = NULL;
+	float* yy2 = NULL;
+	float* w = NULL;
+	float* h = NULL;
+	float* inter = NULL;
+	float* o = NULL;
 
 	Mat x1 = img->colRange(0, 1).clone();
 	Mat y1 = img->colRange(1, 2).clone();
@@ -637,9 +655,11 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
 	Mat y2 = img->colRange(3, 4).clone();
 	Mat s = img->colRange(4, 5).clone();
 
-    float* area = get_area(&x1, &y1, &x2, &y2, len);
+    area = get_area(&x1, &y1, &x2, &y2, len);
+	if (area == NULL) {
+		goto AREA_MALLOC_ERROR;
+	}
 
-	Mat I;
 	sortIdx(s, I, CV_SORT_EVERY_COLUMN + CV_SORT_ASCENDING);
 
 	while (len > 0) {
@@ -648,25 +668,64 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
         counter++;
         len = I.rows - 1;
 
-        int* idx = get_idx(&I);
+        idx = get_idx(&I);
+		if (idx == NULL) {
+			goto IDX_MALLOC_ERROR;
+		}
 
-		float* xx1 = maximum(&x1, i, idx, len);
-        float* yy1 = maximum(&y1, i, idx, len);
-        float* xx2 = minimum(&x2, i, idx, len);
-        float* yy2 = minimum(&y2, i, idx, len);
+		xx1 = maximum(&x1, i, idx, len);
+		if (xx1 == NULL) {
+			goto XX1_MALLOC_ERROR;
+		}
 
-		float* w = get_wh_in_nms(xx1, xx2, 0.0, len);
-        float* h = get_wh_in_nms(yy1, yy2, 0.0, len);
+        yy1 = maximum(&y1, i, idx, len);
+		if (yy1 == NULL) {
+			goto YY1_MALLOC_ERROR;
+		}
 
-        float* inter = get_inter(w, h, len);
+        xx2 = minimum(&x2, i, idx, len);
+		if (xx2 == NULL) {
+			goto XX2_MALLOC_ERROR;
+		}
 
-        float* o = NULL;
+        yy2 = minimum(&y2, i, idx, len);
+		if (yy2 == NULL) {
+			goto YY2_MALLOC_ERROR;
+		}
+
+		w = get_wh_in_nms(xx1, xx2, 0.0, len);
+		if (w == NULL) {
+			goto W_MALLOC_ERROR;
+		}
+
+        h = get_wh_in_nms(yy1, yy2, 0.0, len);
+		if (h == NULL) {
+			goto H_MALLOC_ERROR;
+		}
+
+        inter = get_inter(w, h, len);
+		if (inter == NULL) {
+			goto INTER_MALLOC_ERROR;
+		}
+
 		if (!strcmp(method, "Min")) {
 			float* tmp = minimum(area, area[i], idx, len);
+			if (tmp == NULL) {
+				goto O_MALLOC_ERROR;
+			}
+
 			o = get_o_Min(inter, tmp, len);
+			if (o == NULL) {
+				free(tmp);
+				goto O_MALLOC_ERROR;
+			}
+
 			free(tmp);
 		}else {
 			o = get_o(inter, area, i, idx, len);
+			if (o == NULL) {
+				goto O_MALLOC_ERROR;
+			}
 		}
 
 		I = update_I(&I, o, threshold);
@@ -687,6 +746,27 @@ short* nms(Mat* img, float threshold, const char* method, int* pick_len)
 
     free(area);
     return get_pick_in_nms(pick, counter);
+
+O_MALLOC_ERROR:
+		free(inter);
+INTER_MALLOC_ERROR:
+		free(h);
+H_MALLOC_ERROR:
+		free(w);
+W_MALLOC_ERROR:
+		free(yy2);
+YY2_MALLOC_ERROR:
+		free(xx2);
+XX2_MALLOC_ERROR:
+		free(yy1);
+YY1_MALLOC_ERROR:
+		free(xx1);
+XX1_MALLOC_ERROR:
+		free(idx);
+IDX_MALLOC_ERROR:
+		free(area);
+AREA_MALLOC_ERROR:
+		return NULL;
 }
 
 Mat get_boxes_from_pick(Mat* img, short* pick, int pick_len)
@@ -740,7 +820,7 @@ float* mat_cols_sub(Mat subed, Mat sub)
 	int i = 0;
 	float* ret_ptr = (float*)malloc(subed.rows * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -756,7 +836,7 @@ float* get_qq(Mat* img, int x, int y, float* reg)
 	int i = 0;
 	float* ret_ptr = (float*)malloc(img->rows * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -840,16 +920,26 @@ void get_ret_rerec(Mat* img, int xs, int xe, int ys, int ye, Mat* tmp)
 	return ;
 }
 
-void rerec(Mat* img)
+int rerec(Mat* img)
 {
 	int i = 0;
 	float* h = mat_cols_sub(img->colRange(3, 4), img->colRange(1, 2));
+	if (h == NULL) {
+		return -1;
+	}
+
 	float* w = mat_cols_sub(img->colRange(2, 3), img->colRange(0, 1));
+	if (w == NULL) {
+		free(h);
+		return -1;
+	}
 
 	float* l = (float*)malloc(img->rows * sizeof(float));
 	if (l == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
-		return ;
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+		free(w);
+		free(h);
+		return -1;
 	}
 
 	for (i = 0; i < img->rows; i++) {
@@ -867,7 +957,7 @@ void rerec(Mat* img)
 	free(h);
 	free(w);
 
-	return ;
+	return 0;
 }
 
 void get_total_boxes_fix(Mat* img, int xs, int xe, int ys, int ye)
@@ -1051,7 +1141,7 @@ int* get_ipass(Mat* score, float threshold, int len, int* ipass_len)
 	*ipass_len = count;
 	int* ret_ptr = (int*)malloc(count * sizeof(int));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 
@@ -1179,10 +1269,11 @@ void get_bbreg_return(Mat* img, float* b1, float* b2, float* b3, float* b4, int 
 	return ;
 }
 
-void bbreg(Mat* boundingbox, Mat* reg)
+int bbreg(Mat* boundingbox, Mat* reg)
 {
 	if (reg->cols == 1) {
 		/* reg = np.reshape(reg, (reg.shape[2], reg.shape[3])); */
+		return -1;
 	}
 
 	int len = reg->rows;
@@ -1194,8 +1285,8 @@ void bbreg(Mat* boundingbox, Mat* reg)
 	float* b3 = (float*)malloc(len * sizeof(float));
 	float* b4 = (float*)malloc(len * sizeof(float));
 	if (w == NULL || h == NULL || b1 == NULL || b2 == NULL || b3 == NULL || b4 == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
-		return ;
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+		return -1;
 	}
 
 	get_wh_in_bbreg(boundingbox, w, h, len);
@@ -1209,7 +1300,7 @@ void bbreg(Mat* boundingbox, Mat* reg)
 	free(b2);
 	free(b3);
 	free(b4);
-	return ;
+	return 0;
 }
 
 Mat fix_total_boxes(Mat* img)
@@ -1260,7 +1351,7 @@ float* get_o_Min(float* inter, float* tmp, int len)
 	int i = 0;
 	float* ret_ptr = (float*)malloc(len * sizeof(float));
 	if (ret_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines\n", __func__, __LINE__);
 		return NULL;
 	}
 

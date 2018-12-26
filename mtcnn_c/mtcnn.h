@@ -16,6 +16,8 @@ using namespace cv;
 
 #define SCALES_LEN 16			/* 生成图像金字塔的个数 */
 
+#define MAX_FACE_NUM 2			/* 检测人脸最大数量 */
+
 Mat detect_face(Mat*, float*, float*, int, Mat*);
 
 Mat imresample(Mat*, int, int, unsigned char);
@@ -116,7 +118,7 @@ float* get_qq(Mat*, int, int, float*);
 
 Mat get_vstack_qq_and_transpose(float*, float*, float*, float*, Mat*, int);
 
-void rerec(Mat*);
+int rerec(Mat*);
 
 void get_bboxA(Mat*, float*, float*, int);
 
@@ -150,7 +152,7 @@ Mat get_total_boxes_pick(Mat*, short*, int len);
 
 Mat transpose_mv_piack(Mat*, short*, int);
 
-void bbreg(Mat*, Mat*);
+int bbreg(Mat*, Mat*);
 
 void get_wh_in_bbreg(Mat*, float*, float*, int);
 

@@ -44,9 +44,17 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 
 		Mat im_data = imresample(img, hs, ws, (unsigned char)1);
 		float* img_y = get_img_y(&im_data);
+		if (img_y == NULL) {
+			goto EXECUTE_ERROR;
+		}
 
 		/* out = pnet(img_y) */
 		Mat out = run_pnet(npu_device, img_y, pnet_npu_file[i - 7]);
+		if (out.rows * out.cols == 0) {
+			free(img_y);
+			goto EXECUTE_ERROR;
+		}
+
 		Mat out0 = out.rowRange(0, 4).clone();
 		Mat out1 = out.rowRange(4, 6).clone();
 
@@ -54,13 +62,15 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		Mat in1 = get_in1(&out1);
 
 		Mat boxes = generateBoundingBox(&in1, &in0, scale, threshold[0]);
-		if (boxes.rows * boxes.cols == 0)
+		if (boxes.rows * boxes.cols == 0) {
+			free(img_y);
 			continue;
+		}
 
 		pick = nms(&boxes, 0.5, "Union", &pick_len);
 		if (pick == NULL) {
-			printf("nms execute failed!\n");
-			return boxes;
+			free(img_y);
+			goto EXECUTE_ERROR;
 		}
 
 		if ((boxes.rows * boxes.cols > 0) && (pick_len > 0)) {
@@ -80,24 +90,76 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 	if (numbox > 0) {
 		pick = nms(&total_boxes, 0.7, "Union", &pick_len);
 		if (pick == NULL) {
-			printf("nms execute failed!\n");
-			return total_boxes;
+			goto EXECUTE_ERROR;
 		}
 
 		total_boxes = get_boxes_from_pick(&total_boxes, pick, pick_len);
 		len = total_boxes.rows;
 
 		float* regw = mat_cols_sub(total_boxes.colRange(2, 3), total_boxes.colRange(0, 1));
+		if (regw == NULL) {
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
+
 		float* regh = mat_cols_sub(total_boxes.colRange(3, 4), total_boxes.colRange(1, 2));
+		if (regh == NULL) {
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
 
 		float* qq1 = get_qq(&total_boxes, 0, 5, regw);
+		if (qq1 == NULL) {
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
+
 		float* qq2 = get_qq(&total_boxes, 1, 6, regh);
+		if (qq2 == NULL) {
+			free(qq1);
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
+
 		float* qq3 = get_qq(&total_boxes, 2, 7, regw);
+		if (qq3 == NULL) {
+			free(qq2);
+			free(qq1);
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
+
 		float* qq4 = get_qq(&total_boxes, 3, 8, regh);
+		if (qq4 == NULL) {
+			free(qq3);
+			free(qq2);
+			free(qq1);
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
 
 		total_boxes = get_vstack_qq_and_transpose(qq1, qq2, qq3, qq4, &total_boxes, 4);
 
-		rerec(&total_boxes);
+		int ret = rerec(&total_boxes);
+		if (ret != 0) {
+			free(qq4);
+			free(qq3);
+			free(qq2);
+			free(qq1);
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+		}
 
 		get_total_boxes_fix(&total_boxes, 0, 4, 0, 4);
 
@@ -112,8 +174,16 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		tmpw = (int*)malloc(len * sizeof(int));
 		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
-			printf("malloc failed in %d lines!\n", __LINE__);
-			return total_boxes;
+			printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+			free(qq4);
+			free(qq3);
+			free(qq2);
+			free(qq1);
+			free(regh);
+			free(regw);
+			free(pick);
+			goto EXECUTE_ERROR;
+			/* 这里可能会导致有些malloc出来的空间没有free */
 		}
 
 		pad(&total_boxes, h, w, dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph);
@@ -144,15 +214,23 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
 				printf("buckle map execute failed!\n");
-				return tmp;
+				goto EXECUTE_ERROR;
 			}
 		}
 
 		Mat tempimg_tmp = transpose3021(&tempimg, Mat_init_size[2]);
 		float* tempimg1 = image_normalization(&tempimg_tmp, Mat_init_size[2], (float)1);
+		if (tempimg1 == NULL) {
+				goto EXECUTE_ERROR;
+		}
 
 		/* out = rnet(tempimg1); */
 		Mat out = run_rnet(npu_device, tempimg1, rnet_npu_file[0], numbox);
+		if (out.rows * out.cols == 0) {
+			free(tempimg1);
+			goto EXECUTE_ERROR;
+		}
+
 		Mat out0 = out.colRange(0, 4).clone();
 		Mat out1 = out.colRange(4, 6).clone();
 
@@ -162,8 +240,10 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		len = out0.cols;
 		Mat score = out1.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[1], len, &ipass_len);
-		if (ipass == NULL)
-			printf("In rnet, get_ipass() function return NULL!\n");
+		if (ipass == NULL) {
+			free(tempimg1);
+			goto EXECUTE_ERROR;
+		}
 
 		total_boxes = get_hstack_ronet(&total_boxes, ipass, 0, 4, &score, ipass_len);
 
@@ -172,14 +252,26 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		if (total_boxes.rows > 0) {
 			pick = nms(&total_boxes, 0.7, "Union", &pick_len);
 			if (pick == NULL) {
-				printf("nms execute failed!\n");
-				return total_boxes;
+				free(ipass);
+				free(tempimg1);
+				goto EXECUTE_ERROR;
 			}
 
 			total_boxes = get_total_boxes_pick(&total_boxes, pick, pick_len);
 			mv = transpose_mv_piack(&mv, pick, pick_len);
-			bbreg(&total_boxes, &mv);
-			rerec(&total_boxes);
+			int ret = bbreg(&total_boxes, &mv);
+			if (ret != 0) {
+				free(ipass);
+				free(tempimg1);
+				goto EXECUTE_ERROR;
+			}
+
+			ret = rerec(&total_boxes);
+			if (ret != 0) {
+				free(ipass);
+				free(tempimg1);
+				goto EXECUTE_ERROR;
+			}
 		}
 
 		free(tempimg1);
@@ -212,8 +304,8 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		tmpw = (int*)malloc(len * sizeof(int));
 		tmph = (int*)malloc(len * sizeof(int));
 		if (dy == NULL || edy == NULL || dx == NULL || edx == NULL || y == NULL || ey == NULL || x == NULL || ex == NULL || tmpw == NULL || tmph == NULL) {
-			printf("malloc failed in %d lines!\n", __LINE__);
-			return total_boxes;
+			printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+			goto EXECUTE_ERROR;
 		}
 
 		total_boxes = fix_total_boxes(&total_boxes);
@@ -231,14 +323,23 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 				Mat tmp_tempimg = imresample(&tmp, 48, 48, (float)1);
 				get_tempimg(&tempimg, &tmp_tempimg, i, Mat_init_size[2]);
 			} else {
-				return tmp;
+				printf("buckle map execute failed!\n");
+				goto EXECUTE_ERROR;
 			}
 		}
 
 		Mat tempimg_tmp = transpose3021(&tempimg, Mat_init_size[2]);
 		float* tempimg1 = image_normalization(&tempimg_tmp, Mat_init_size[2], (float)1);
+		if (tempimg1 == NULL) {
+				goto EXECUTE_ERROR;
+		}
 
 		Mat out = run_onet(npu_device, tempimg1, onet_npu_file[0], numbox);
+		if (out.rows * out.cols == 0) {
+			free(tempimg1);
+			goto EXECUTE_ERROR;
+		}
+
 		Mat out0 = out.colRange(0, 4).clone();
 		Mat out1 = out.colRange(4, 14).clone();
 		Mat out2 = out.colRange(14, 16).clone();
@@ -250,8 +351,10 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		len = out0.cols;
 		Mat score = out2.rowRange(1, 2).clone();
 		int* ipass = get_ipass(&score, threshold[2], len, &ipass_len);
-		if (ipass == NULL)
-			printf("In onet, get_ipass() return NULL!\n");
+		if (ipass == NULL) {
+			free(tempimg1);
+			goto EXECUTE_ERROR;
+		}
 
 		Mat points = get_points(&out1, ipass, ipass_len);
 
@@ -260,10 +363,20 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		Mat mv = get_mv(&out0, ipass, ipass_len);
 
 		float* w = (float*)malloc(ipass_len * sizeof(float));
+		if (w == NULL) {
+			printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+			free(ipass);
+			free(tempimg1);
+			goto EXECUTE_ERROR;
+		}
+
 		float* h = (float*)malloc(ipass_len * sizeof(float));
-		if (w == NULL || h == NULL) {
-			printf("malloc failed in %d lines!\n", __LINE__);
-			return total_boxes;
+		if (h == NULL) {
+			printf("malloc failed in %s %d lines\n", __func__, __LINE__);
+			free(w);
+			free(ipass);
+			free(tempimg1);
+			goto EXECUTE_ERROR;
 		}
 
 		get_wh_in_bbreg(&total_boxes, w, h, ipass_len);
@@ -275,8 +388,11 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 			bbreg(&total_boxes, &mv);
 			pick = nms(&total_boxes, 0.7, "Min", &pick_len);
 			if (pick == NULL) {
-				printf("nms execute failed!\n");
-				return total_boxes;
+				free(h);
+				free(w);
+				free(ipass);
+				free(tempimg1);
+				goto EXECUTE_ERROR;
 			}
 
 			total_boxes = get_boxes_from_pick(&total_boxes, pick, pick_len);
@@ -303,4 +419,8 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 	GxDnnCloseDevice(npu_device);
 
 	return total_boxes;
+
+EXECUTE_ERROR:
+	GxDnnCloseDevice(npu_device);
+	return *ret_points;
 }

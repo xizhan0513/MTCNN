@@ -34,10 +34,17 @@ Mat run_pnet(GxDnnDevice device, float* net_input_data, const char* model_name)
 	input_size = input_num * sizeof(GxDnnIOInfo);
 	output_size = output_num * sizeof(GxDnnIOInfo);
 	input = (GxDnnIOInfo*)malloc(input_size);
-	output = (GxDnnIOInfo*)malloc(output_size);
+	if (input == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		return ret_img;
+	}
 
-	if (input == NULL || output == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+	output = (GxDnnIOInfo*)malloc(output_size);
+	if (output == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		free(input);
 		return ret_img;
 	}
 
@@ -117,10 +124,17 @@ Mat run_rnet(GxDnnDevice device, float* net_input_data, const char* model_name, 
 	input_size = input_num * sizeof(GxDnnIOInfo);
 	output_size = output_num * sizeof(GxDnnIOInfo);
 	input = (GxDnnIOInfo*)malloc(input_size);
-	output = (GxDnnIOInfo*)malloc(output_size);
+	if (input == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		return ret_img;
+	}
 
-	if (input == NULL || output == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+	output = (GxDnnIOInfo*)malloc(output_size);
+	if (output == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		free(input);
 		return ret_img;
 	}
 
@@ -128,7 +142,10 @@ Mat run_rnet(GxDnnDevice device, float* net_input_data, const char* model_name, 
 
 	out_ptr = (float*)malloc(len * 6 * sizeof(float));
 	if (out_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		free(input);
+		free(output);
 		return ret_img;
 	}
 	float* tmp_out = out_ptr;
@@ -201,10 +218,17 @@ Mat run_onet(GxDnnDevice device, float* net_input_data, const char* model_name, 
 	input_size = input_num * sizeof(GxDnnIOInfo);
 	output_size = output_num * sizeof(GxDnnIOInfo);
 	input = (GxDnnIOInfo*)malloc(input_size);
-	output = (GxDnnIOInfo*)malloc(output_size);
+	if (input == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		return ret_img;
+	}
 
-	if (input == NULL || output == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+	output = (GxDnnIOInfo*)malloc(output_size);
+	if (output == NULL) {
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		free(input);
 		return ret_img;
 	}
 
@@ -212,7 +236,10 @@ Mat run_onet(GxDnnDevice device, float* net_input_data, const char* model_name, 
 
 	out_ptr = (float*)malloc(len * 16 * sizeof(float));
 	if (out_ptr == NULL) {
-		printf("malloc failed in %d lines!\n", __LINE__);
+		printf("malloc failed in %s %d lines!\n", __func__, __LINE__);
+		GxDnnReleaseTask(task);
+		free(input);
+		free(output);
 		return ret_img;
 	}
 
