@@ -6,6 +6,8 @@ using namespace cv;
 Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* ret_points)
 {
 	int i = 0;
+	int ret = 0;
+	int load_ret = 0;
 	int h = img->rows;
 	int w = img->cols;
 	int hs = 0, ws = 0;
@@ -17,9 +19,9 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 	int Mat_init_size[3] = {0};
 	Mat total_boxes;
 
-	const char* pnet_npu_file[9] = {"./npu/pnet49.npu", "./npu/pnet41.npu", "./npu/pnet35.npu", "./npu/pnet30.npu", "./npu/pnet26.npu", "./npu/pnet22.npu", "./npu/pnet19.npu", "./npu/pnet16.npu", "./npu/pnet14.npu"};
-	const char* rnet_npu_file[1] = {"./npu/rnet.npu"};
-	const char* onet_npu_file[1] = {"./npu/onet.npu"};
+	struct npu_info arr_npu[NET_MODEL_NUM] = {0};
+	const char* model_file[NET_MODEL_NUM] = {"./npu/pnet49.npu", "./npu/pnet41.npu", "./npu/pnet35.npu", "./npu/pnet30.npu", "./npu/pnet26.npu", "./npu/pnet22.npu", "./npu/pnet19.npu", "./npu/pnet16.npu", "./npu/pnet14.npu", "./npu/rnet.npu", "./npu/onet.npu"};
+	int model_file_index = 0;
 
 	int numbox = 0;
 	int* dy = NULL;
@@ -37,6 +39,11 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 
 	init_npu_device(&npu_device);
 
+	load_ret = load_npu_model(npu_device, model_file, arr_npu, NET_MODEL_NUM);
+	if (load_ret != NET_MODEL_NUM) {
+		goto EXECUTE_ERROR;
+	}
+
 	for (i = 7; i < scales_len; i++) {
 		scale = scales[i];
 		hs = (int)ceil(h * scale);
@@ -49,11 +56,13 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		}
 
 		/* out = pnet(img_y) */
-		Mat out = run_pnet(npu_device, img_y, pnet_npu_file[i - 7]);
+		Mat out = run_pnet(img_y, arr_npu[model_file_index]);
 		if (out.rows * out.cols == 0) {
 			free(img_y);
 			goto EXECUTE_ERROR;
 		}
+
+		model_file_index++;
 
 		Mat out0 = out.rowRange(0, 4).clone();
 		Mat out1 = out.rowRange(4, 6).clone();
@@ -149,7 +158,7 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 
 		total_boxes = get_vstack_qq_and_transpose(qq1, qq2, qq3, qq4, &total_boxes, 4);
 
-		int ret = rerec(&total_boxes);
+		ret = rerec(&total_boxes);
 		if (ret != 0) {
 			free(qq4);
 			free(qq3);
@@ -225,11 +234,13 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		}
 
 		/* out = rnet(tempimg1); */
-		Mat out = run_rnet(npu_device, tempimg1, rnet_npu_file[0], numbox);
+		Mat out = run_rnet(tempimg1, arr_npu[model_file_index], numbox);
 		if (out.rows * out.cols == 0) {
 			free(tempimg1);
 			goto EXECUTE_ERROR;
 		}
+
+		model_file_index++;
 
 		Mat out0 = out.colRange(0, 4).clone();
 		Mat out1 = out.colRange(4, 6).clone();
@@ -259,7 +270,7 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 
 			total_boxes = get_total_boxes_pick(&total_boxes, pick, pick_len);
 			mv = transpose_mv_piack(&mv, pick, pick_len);
-			int ret = bbreg(&total_boxes, &mv);
+			ret = bbreg(&total_boxes, &mv);
 			if (ret != 0) {
 				free(ipass);
 				free(tempimg1);
@@ -334,7 +345,7 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 				goto EXECUTE_ERROR;
 		}
 
-		Mat out = run_onet(npu_device, tempimg1, onet_npu_file[0], numbox);
+		Mat out = run_onet(tempimg1, arr_npu[model_file_index], numbox);
 		if (out.rows * out.cols == 0) {
 			free(tempimg1);
 			goto EXECUTE_ERROR;
@@ -416,11 +427,11 @@ Mat detect_face(Mat* img, float* threshold, float* scales, int scales_len, Mat* 
 		free(pick);
 	}
 
-	GxDnnCloseDevice(npu_device);
+	release_npu_model(npu_device, arr_npu, load_ret);
 
 	return total_boxes;
 
 EXECUTE_ERROR:
-	GxDnnCloseDevice(npu_device);
+	release_npu_model(npu_device, arr_npu, load_ret);
 	return *ret_points;
 }

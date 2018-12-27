@@ -15,8 +15,19 @@ using namespace std;
 using namespace cv;
 
 #define SCALES_LEN 16			/* 生成图像金字塔的个数 */
-
 #define MAX_FACE_NUM 2			/* 检测人脸最大数量 */
+#define NET_MODEL_NUM 11		/* 模型个数 */
+
+struct npu_info {
+	int priority;
+	int input_num;
+	int output_num;
+	int input_size;
+	int output_size;
+	GxDnnTask task;
+	GxDnnEventHandler event_handler;
+};
+
 
 Mat detect_face(Mat*, float*, float*, int, Mat*);
 
@@ -172,12 +183,16 @@ Mat  points_pick(Mat*, short*, int);
 
 Mat face_preprocess(Mat*, Mat*);
 
+Mat run_pnet(float*, struct npu_info);
+
+Mat run_rnet(float*, struct npu_info, int);
+
+Mat run_onet(float*, struct npu_info, int);
+
 void init_npu_device(GxDnnDevice*);
 
-Mat run_pnet(GxDnnDevice, float*, const char*);
+int load_npu_model(GxDnnDevice, const char**, struct npu_info*, int);
 
-Mat run_rnet(GxDnnDevice, float*, const char*, int);
-
-Mat run_onet(GxDnnDevice, float*, const char*, int);
+void release_npu_model(GxDnnDevice, struct npu_info*, int);
 
 #endif
